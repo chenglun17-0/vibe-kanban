@@ -1,5 +1,10 @@
 {
   "executors": {
+    "PI": {
+      "DEFAULT": {
+        "PI": {}
+      }
+    },
     "CLAUDE_CODE": {
       "DEFAULT": {
         "CLAUDE_CODE": {
