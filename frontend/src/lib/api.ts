@@ -52,20 +52,6 @@ import {
   RunAgentSetupResponse,
   GhCliSetupError,
   RunScriptError,
-  StatusResponse,
-  ListOrganizationsResponse,
-  OrganizationMemberWithProfile,
-  ListMembersResponse,
-  RemoteProjectMembersResponse,
-  CreateOrganizationRequest,
-  CreateOrganizationResponse,
-  CreateInvitationRequest,
-  CreateInvitationResponse,
-  RevokeInvitationRequest,
-  UpdateMemberRoleRequest,
-  UpdateMemberRoleResponse,
-  Invitation,
-  ListInvitationsResponse,
   OpenEditorResponse,
   OpenEditorRequest,
   PrError,
@@ -74,8 +60,6 @@ import {
   CreateScratch,
   UpdateScratch,
   PushError,
-  TokenResponse,
-  CurrentUserResponse,
   QueueStatus,
   PrCommentsResponse,
   MergeTaskAttemptRequest,
@@ -253,15 +237,6 @@ export const projectsApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponse<Project>(response);
-  },
-
-  getRemoteMembers: async (
-    projectId: string
-  ): Promise<RemoteProjectMembersResponse> => {
-    const response = await makeRequest(
-      `/api/projects/${projectId}/remote/members`
-    );
-    return handleApiResponse<RemoteProjectMembersResponse>(response);
   },
 
   delete: async (id: string): Promise<void> => {
@@ -1118,155 +1093,6 @@ export const approvalsApi = {
   },
 };
 
-// OAuth API
-export const oauthApi = {
-  handoffInit: async (
-    provider: string,
-    returnTo: string
-  ): Promise<{ handoff_id: string; authorize_url: string }> => {
-    const response = await makeRequest('/api/auth/handoff/init', {
-      method: 'POST',
-      body: JSON.stringify({ provider, return_to: returnTo }),
-    });
-    return handleApiResponse<{ handoff_id: string; authorize_url: string }>(
-      response
-    );
-  },
-
-  status: async (): Promise<StatusResponse> => {
-    const response = await makeRequest('/api/auth/status', {
-      cache: 'no-store',
-    });
-    return handleApiResponse<StatusResponse>(response);
-  },
-
-  logout: async (): Promise<void> => {
-    const response = await makeRequest('/api/auth/logout', {
-      method: 'POST',
-    });
-    if (!response.ok) {
-      throw new ApiError(
-        `Logout failed with status ${response.status}`,
-        response.status,
-        response
-      );
-    }
-  },
-
-  /** Returns the current access token for the remote server (auto-refreshes if needed) */
-  getToken: async (): Promise<TokenResponse | null> => {
-    const response = await makeRequest('/api/auth/token');
-    if (!response.ok) return null;
-    return handleApiResponse<TokenResponse>(response);
-  },
-
-  /** Returns the user ID of the currently authenticated user */
-  getCurrentUser: async (): Promise<CurrentUserResponse> => {
-    const response = await makeRequest('/api/auth/user');
-    return handleApiResponse<CurrentUserResponse>(response);
-  },
-};
-
-// Organizations API
-export const organizationsApi = {
-  getMembers: async (
-    orgId: string
-  ): Promise<OrganizationMemberWithProfile[]> => {
-    const response = await makeRequest(`/api/organizations/${orgId}/members`);
-    const result = await handleApiResponse<ListMembersResponse>(response);
-    return result.members;
-  },
-
-  getUserOrganizations: async (): Promise<ListOrganizationsResponse> => {
-    const response = await makeRequest('/api/organizations');
-    return handleApiResponse<ListOrganizationsResponse>(response);
-  },
-
-  createOrganization: async (
-    data: CreateOrganizationRequest
-  ): Promise<CreateOrganizationResponse> => {
-    const response = await makeRequest('/api/organizations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    return handleApiResponse<CreateOrganizationResponse>(response);
-  },
-
-  createInvitation: async (
-    orgId: string,
-    data: CreateInvitationRequest
-  ): Promise<CreateInvitationResponse> => {
-    const response = await makeRequest(
-      `/api/organizations/${orgId}/invitations`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      }
-    );
-    return handleApiResponse<CreateInvitationResponse>(response);
-  },
-
-  removeMember: async (orgId: string, userId: string): Promise<void> => {
-    const response = await makeRequest(
-      `/api/organizations/${orgId}/members/${userId}`,
-      {
-        method: 'DELETE',
-      }
-    );
-    return handleApiResponse<void>(response);
-  },
-
-  updateMemberRole: async (
-    orgId: string,
-    userId: string,
-    data: UpdateMemberRoleRequest
-  ): Promise<UpdateMemberRoleResponse> => {
-    const response = await makeRequest(
-      `/api/organizations/${orgId}/members/${userId}/role`,
-      {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      }
-    );
-    return handleApiResponse<UpdateMemberRoleResponse>(response);
-  },
-
-  listInvitations: async (orgId: string): Promise<Invitation[]> => {
-    const response = await makeRequest(
-      `/api/organizations/${orgId}/invitations`
-    );
-    const result = await handleApiResponse<ListInvitationsResponse>(response);
-    return result.invitations;
-  },
-
-  revokeInvitation: async (
-    orgId: string,
-    invitationId: string
-  ): Promise<void> => {
-    const body: RevokeInvitationRequest = { invitation_id: invitationId };
-    const response = await makeRequest(
-      `/api/organizations/${orgId}/invitations/revoke`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      }
-    );
-    return handleApiResponse<void>(response);
-  },
-
-  deleteOrganization: async (orgId: string): Promise<void> => {
-    const response = await makeRequest(`/api/organizations/${orgId}`, {
-      method: 'DELETE',
-    });
-    return handleApiResponse<void>(response);
-  },
-};
-
-// Scratch API
 export const scratchApi = {
   create: async (
     scratchType: ScratchType,

@@ -8,14 +8,12 @@ import { FullAttemptLogsPage } from '@/pages/FullAttemptLogs';
 import { NormalLayout } from '@/components/layout/NormalLayout';
 import { NewDesignLayout } from '@/components/layout/NewDesignLayout';
 import { usePostHog } from 'posthog-js/react';
-import { useAuth } from '@/hooks';
 import { usePreviousPath } from '@/hooks/usePreviousPath';
 
 import {
   AgentSettings,
   GeneralSettings,
   McpSettings,
-  OrganizationSettings,
   ProjectSettings,
   ReposSettings,
   SettingsLayout,
@@ -43,14 +41,12 @@ import { TerminalProvider } from '@/contexts/TerminalContext';
 // New design pages
 import { Workspaces } from '@/pages/ui-new/Workspaces';
 import { WorkspacesLanding } from '@/pages/ui-new/WorkspacesLanding';
-import { ElectricTestPage } from '@/pages/ui-new/ElectricTestPage';
 
 const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
 
 function AppContent() {
   const { config, analyticsUserId, updateAndSaveConfig } = useUserSystem();
   const posthog = usePostHog();
-  const { isSignedIn } = useAuth();
 
   // Track previous path for back navigation
   usePreviousPath();
@@ -114,7 +110,7 @@ function AppContent() {
     return () => {
       cancelled = true;
     };
-  }, [config, isSignedIn, updateAndSaveConfig]);
+  }, [config, updateAndSaveConfig]);
 
   // TODO: Disabled while developing FE only
   // if (loading) {
@@ -169,10 +165,6 @@ function AppContent() {
                 <Route path="general" element={<GeneralSettings />} />
                 <Route path="projects" element={<ProjectSettings />} />
                 <Route path="repos" element={<ReposSettings />} />
-                <Route
-                  path="organizations"
-                  element={<OrganizationSettings />}
-                />
                 <Route path="agents" element={<AgentSettings />} />
                 <Route path="mcp" element={<McpSettings />} />
               </Route>
@@ -203,7 +195,6 @@ function AppContent() {
             >
               <Route index element={<WorkspacesLanding />} />
               <Route path="create" element={<Workspaces />} />
-              <Route path="electric-test" element={<ElectricTestPage />} />
               <Route path=":workspaceId" element={<Workspaces />} />
             </Route>
           </SentryRoutes>

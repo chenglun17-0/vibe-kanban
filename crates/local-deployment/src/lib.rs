@@ -2,33 +2,25 @@ use std::{collections::HashMap, sync::Arc};
 
 use async_trait::async_trait;
 use db::DBService;
-use deployment::{Deployment, DeploymentError, RemoteClientNotConfigured};
+use deployment::{Deployment, DeploymentError};
 use executors::profile::ExecutorConfigs;
 use git::GitService;
 use services::services::{
     analytics::{AnalyticsConfig, AnalyticsContext, AnalyticsService, generate_user_id},
     approvals::Approvals,
-    auth::AuthContext,
     config::{Config, load_config_from_file, save_config_to_file},
     container::ContainerService,
     events::EventService,
     file_search::FileSearchCache,
     filesystem::FilesystemService,
     image::ImageService,
-    oauth_credentials::OAuthCredentials,
     project::ProjectService,
     queued_message::QueuedMessageService,
-    remote_client::{RemoteClient, RemoteClientError},
     repo::RepoService,
     worktree_manager::WorktreeManager,
 };
 use tokio::sync::RwLock;
-use utils::{
-    api::oauth::LoginStatus,
-    assets::{config_path, credentials_path},
-    msg_store::MsgStore,
-};
-use uuid::Uuid;
+use utils::{assets::config_path, msg_store::MsgStore};
 
 use crate::{container::LocalContainerService, pty::PtyService};
 mod command;
@@ -52,16 +44,7 @@ pub struct LocalDeployment {
     file_search_cache: Arc<FileSearchCache>,
     approvals: Approvals,
     queued_message_service: QueuedMessageService,
-    remote_client: Result<RemoteClient, RemoteClientNotConfigured>,
-    auth_context: AuthContext,
-    oauth_handoffs: Arc<RwLock<HashMap<Uuid, PendingHandoff>>>,
     pty: PtyService,
-}
-
-#[derive(Debug, Clone)]
-struct PendingHandoff {
-    provider: String,
-    app_verifier: String,
 }
 
 #[async_trait]
@@ -133,37 +116,6 @@ impl Deployment for LocalDeployment {
         let approvals = Approvals::new(msg_stores.clone());
         let queued_message_service = QueuedMessageService::new();
 
-        let oauth_credentials = Arc::new(OAuthCredentials::new(credentials_path()));
-        if let Err(e) = oauth_credentials.load().await {
-            tracing::warn!(?e, "failed to load OAuth credentials");
-        }
-
-        let profile_cache = Arc::new(RwLock::new(None));
-        let auth_context = AuthContext::new(oauth_credentials.clone(), profile_cache.clone());
-
-        let api_base = std::env::var("VK_SHARED_API_BASE")
-            .ok()
-            .or_else(|| option_env!("VK_SHARED_API_BASE").map(|s| s.to_string()));
-
-        let remote_client = match api_base {
-            Some(url) => match RemoteClient::new(&url, auth_context.clone()) {
-                Ok(client) => {
-                    tracing::info!("Remote client initialized with URL: {}", url);
-                    Ok(client)
-                }
-                Err(e) => {
-                    tracing::error!(?e, "failed to create remote client");
-                    Err(RemoteClientNotConfigured)
-                }
-            },
-            None => {
-                tracing::info!("VK_SHARED_API_BASE not set; remote features disabled");
-                Err(RemoteClientNotConfigured)
-            }
-        };
-
-        let oauth_handoffs = Arc::new(RwLock::new(HashMap::new()));
-
         // We need to make analytics accessible to the ContainerService
         // TODO: Handle this more gracefully
         let analytics_ctx = analytics.as_ref().map(|s| AnalyticsContext {
@@ -203,9 +155,6 @@ impl Deployment for LocalDeployment {
             file_search_cache,
             approvals,
             queued_message_service,
-            remote_client,
-            auth_context,
-            oauth_handoffs,
             pty,
         };
 
@@ -267,70 +216,9 @@ impl Deployment for LocalDeployment {
     fn queued_message_service(&self) -> &QueuedMessageService {
         &self.queued_message_service
     }
-
-    fn auth_context(&self) -> &AuthContext {
-        &self.auth_context
-    }
 }
 
 impl LocalDeployment {
-    pub fn remote_client(&self) -> Result<RemoteClient, RemoteClientNotConfigured> {
-        self.remote_client.clone()
-    }
-
-    pub async fn get_login_status(&self) -> LoginStatus {
-        if self.auth_context.get_credentials().await.is_none() {
-            self.auth_context.clear_profile().await;
-            return LoginStatus::LoggedOut;
-        };
-
-        if let Some(cached_profile) = self.auth_context.cached_profile().await {
-            return LoginStatus::LoggedIn {
-                profile: cached_profile,
-            };
-        }
-
-        let Ok(client) = self.remote_client() else {
-            return LoginStatus::LoggedOut;
-        };
-
-        match client.profile().await {
-            Ok(profile) => {
-                self.auth_context.set_profile(profile.clone()).await;
-                LoginStatus::LoggedIn { profile }
-            }
-            Err(RemoteClientError::Auth) => {
-                let _ = self.auth_context.clear_credentials().await;
-                self.auth_context.clear_profile().await;
-                LoginStatus::LoggedOut
-            }
-            Err(_) => LoginStatus::LoggedOut,
-        }
-    }
-
-    pub async fn store_oauth_handoff(
-        &self,
-        handoff_id: Uuid,
-        provider: String,
-        app_verifier: String,
-    ) {
-        self.oauth_handoffs.write().await.insert(
-            handoff_id,
-            PendingHandoff {
-                provider,
-                app_verifier,
-            },
-        );
-    }
-
-    pub async fn take_oauth_handoff(&self, handoff_id: &Uuid) -> Option<(String, String)> {
-        self.oauth_handoffs
-            .write()
-            .await
-            .remove(handoff_id)
-            .map(|state| (state.provider, state.app_verifier))
-    }
-
     pub fn pty(&self) -> &PtyService {
         &self.pty
     }

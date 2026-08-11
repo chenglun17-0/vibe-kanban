@@ -5,7 +5,6 @@ import {
   GearIcon,
   FolderIcon,
   GitBranchIcon,
-  BuildingsIcon,
   CpuIcon,
   PlugIcon,
   CaretLeftIcon,
@@ -31,7 +30,6 @@ const SETTINGS_SECTIONS: {
   { id: 'general', icon: GearIcon },
   { id: 'projects', icon: FolderIcon },
   { id: 'repos', icon: GitBranchIcon },
-  { id: 'organizations', icon: BuildingsIcon },
   { id: 'agents', icon: CpuIcon },
   { id: 'mcp', icon: PlugIcon },
 ];
