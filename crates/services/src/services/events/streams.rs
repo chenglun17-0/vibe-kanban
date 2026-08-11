@@ -18,14 +18,18 @@ use super::{
 };
 
 impl EventService {
-    /// Stream raw task messages for a specific project with initial snapshot
+    /// Stream raw task messages, optionally scoped to a project, with initial snapshot.
     pub async fn stream_tasks_raw(
         &self,
-        project_id: Uuid,
+        project_id: Option<Uuid>,
     ) -> Result<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>, EventError>
     {
-        // Get initial snapshot of tasks
-        let tasks = Task::find_by_project_id_with_attempt_status(&self.db.pool, project_id).await?;
+        let tasks = match project_id {
+            Some(project_id) => {
+                Task::find_by_project_id_with_attempt_status(&self.db.pool, project_id).await?
+            }
+            None => Task::find_all_with_attempt_status(&self.db.pool).await?,
+        };
 
         // Convert task array to object keyed by task ID
         let tasks_map: serde_json::Map<String, serde_json::Value> = tasks
@@ -63,7 +67,7 @@ impl EventService {
                                                 serde_json::from_value::<TaskWithAttemptStatus>(
                                                     op.value.clone(),
                                                 )
-                                                && task.project_id == project_id
+                                                && project_id.is_none_or(|id| task.project_id == id)
                                             {
                                                 return Some(Ok(LogMsg::JsonPatch(patch)));
                                             }
@@ -74,7 +78,7 @@ impl EventService {
                                                 serde_json::from_value::<TaskWithAttemptStatus>(
                                                     op.value.clone(),
                                                 )
-                                                && task.project_id == project_id
+                                                && project_id.is_none_or(|id| task.project_id == id)
                                             {
                                                 return Some(Ok(LogMsg::JsonPatch(patch)));
                                             }
@@ -95,23 +99,27 @@ impl EventService {
                                     // Handle old EventPatch format for non-task records
                                     match &event_patch.value.record {
                                         RecordTypes::Task(task) => {
-                                            if task.project_id == project_id {
+                                            if project_id.is_none_or(|id| task.project_id == id) {
                                                 return Some(Ok(LogMsg::JsonPatch(patch)));
                                             }
                                         }
                                         RecordTypes::DeletedTask {
-                                            project_id: Some(deleted_project_id),
+                                            project_id: deleted_project_id,
                                             ..
                                         } => {
-                                            if *deleted_project_id == project_id {
+                                            if project_id.is_none()
+                                                || *deleted_project_id == project_id
+                                            {
                                                 return Some(Ok(LogMsg::JsonPatch(patch)));
                                             }
                                         }
                                         RecordTypes::Workspace(workspace) => {
-                                            // Check if this workspace belongs to a task in our project
+                                            if project_id.is_none() {
+                                                return Some(Ok(LogMsg::JsonPatch(patch)));
+                                            }
                                             if let Ok(Some(task)) =
                                                 Task::find_by_id(&db_pool, workspace.task_id).await
-                                                && task.project_id == project_id
+                                                && Some(task.project_id) == project_id
                                             {
                                                 return Some(Ok(LogMsg::JsonPatch(patch)));
                                             }
@@ -120,10 +128,12 @@ impl EventService {
                                             task_id: Some(deleted_task_id),
                                             ..
                                         } => {
-                                            // Check if deleted workspace belonged to a task in our project
+                                            if project_id.is_none() {
+                                                return Some(Ok(LogMsg::JsonPatch(patch)));
+                                            }
                                             if let Ok(Some(task)) =
                                                 Task::find_by_id(&db_pool, *deleted_task_id).await
-                                                && task.project_id == project_id
+                                                && Some(task.project_id) == project_id
                                             {
                                                 return Some(Ok(LogMsg::JsonPatch(patch)));
                                             }

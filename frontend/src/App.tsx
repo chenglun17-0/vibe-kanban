@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { I18nextProvider } from 'react-i18next';
 import i18n from '@/i18n';
 import { Projects } from '@/pages/Projects';
+import { Tasks } from '@/pages/Tasks';
 import { ProjectTasks } from '@/pages/ProjectTasks';
 import { FullAttemptLogsPage } from '@/pages/FullAttemptLogs';
 import { NormalLayout } from '@/components/layout/NormalLayout';
@@ -148,8 +149,8 @@ function AppContent() {
                 </LegacyDesignScope>
               }
             >
-              <Route path="/" element={<Projects />} />
-              <Route path="/projects" element={<Projects />} />
+              <Route path="/" element={<Tasks />} />
+              <Route path="/projects" element={<Tasks />} />
               <Route path="/projects/:projectId" element={<Projects />} />
               <Route
                 path="/projects/:projectId/tasks"

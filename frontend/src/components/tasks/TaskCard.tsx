@@ -19,6 +19,7 @@ interface TaskCardProps {
   onViewDetails: (task: Task) => void;
   isOpen?: boolean;
   projectId: string;
+  projectName?: string;
 }
 
 export function TaskCard({
@@ -28,6 +29,7 @@ export function TaskCard({
   onViewDetails,
   isOpen,
   projectId,
+  projectName,
 }: TaskCardProps) {
   const { t } = useTranslation('tasks');
   const navigate = useNavigateWithSearch();
@@ -108,10 +110,15 @@ export function TaskCard({
                   <Link className="h-4 w-4" />
                 </Button>
               )}
-              <ActionsDropdown task={task} />
+              <ActionsDropdown task={task} projectId={projectId} />
             </>
           }
         />
+        {projectName && (
+          <span className="w-fit rounded-full border bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+            {projectName}
+          </span>
+        )}
         {task.description && (
           <p className="text-sm text-secondary-foreground break-words">
             {task.description.length > 130

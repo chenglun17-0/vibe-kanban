@@ -15,6 +15,23 @@
     }
   },
   "loading": "加载任务中...",
+  "overview": {
+    "title": "任务看板",
+    "subtitle": "集中查看所有项目中的工作。",
+    "taskCount": "{{count}} 个任务",
+    "projectCount": "{{count}} 个项目",
+    "filterProject": "按项目筛选",
+    "allProjects": "全部项目",
+    "createTask": "创建任务",
+    "chooseProjectTitle": "选择项目",
+    "chooseProjectDescription": "请选择这个任务所属的项目。",
+    "noProjectsTitle": "先创建一个项目",
+    "noProjectsDescription": "每个任务都需要归属项目。创建项目后即可开始规划工作。",
+    "createProject": "创建项目",
+    "noTasks": "还没有任务，先向看板添加第一项工作吧。",
+    "noFilteredTasks": "没有任务匹配当前项目或搜索条件。",
+    "loadError": "无法加载任务看板"
+  },
   "empty": {
     "noTasks": "未找到此项目的任务。",
     "createFirst": "创建第一个任务",

@@ -15,6 +15,23 @@
     }
   },
   "loading": "Chargement des tâches...",
+  "overview": {
+    "title": "Tableau des tâches",
+    "subtitle": "Toutes les tâches de vos projets au même endroit.",
+    "taskCount": "{{count}} tâches",
+    "projectCount": "{{count}} projets",
+    "filterProject": "Filtrer par projet",
+    "allProjects": "Tous les projets",
+    "createTask": "Créer une tâche",
+    "chooseProjectTitle": "Choisir un projet",
+    "chooseProjectDescription": "Sélectionnez le projet auquel appartient cette tâche.",
+    "noProjectsTitle": "Créez d’abord un projet",
+    "noProjectsDescription": "Chaque tâche appartient à un projet. Créez-en un pour commencer à planifier le travail.",
+    "createProject": "Créer un projet",
+    "noTasks": "Aucune tâche pour le moment. Ajoutez le premier élément au tableau.",
+    "noFilteredTasks": "Aucune tâche ne correspond au projet ou à la recherche en cours.",
+    "loadError": "Impossible de charger le tableau des tâches"
+  },
   "empty": {
     "noTasks": "Aucune tâche trouvée pour ce projet.",
     "createFirst": "Créer la première tâche",

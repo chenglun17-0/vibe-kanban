@@ -15,6 +15,23 @@
     }
   },
   "loading": "Loading tasks...",
+  "overview": {
+    "title": "Task board",
+    "subtitle": "All work across every project, in one place.",
+    "taskCount": "{{count}} tasks",
+    "projectCount": "{{count}} projects",
+    "filterProject": "Filter by project",
+    "allProjects": "All projects",
+    "createTask": "Create task",
+    "chooseProjectTitle": "Choose a project",
+    "chooseProjectDescription": "Select the project this task belongs to.",
+    "noProjectsTitle": "Create a project first",
+    "noProjectsDescription": "Every task belongs to a project. Create one to start planning work.",
+    "createProject": "Create project",
+    "noTasks": "No tasks yet. Add the first item to your board.",
+    "noFilteredTasks": "No tasks match the current project or search filter.",
+    "loadError": "Could not load the task board"
+  },
   "empty": {
     "noTasks": "No tasks found for this project.",
     "createFirst": "Create First Task",

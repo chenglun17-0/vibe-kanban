@@ -18,7 +18,8 @@ interface TaskKanbanBoardProps {
   onViewTaskDetails: (task: TaskWithAttemptStatus) => void;
   selectedTaskId?: string;
   onCreateTask?: () => void;
-  projectId: string;
+  projectId?: string;
+  projectNames?: Record<string, string>;
 }
 
 function TaskKanbanBoard({
@@ -28,6 +29,7 @@ function TaskKanbanBoard({
   selectedTaskId,
   onCreateTask,
   projectId,
+  projectNames,
 }: TaskKanbanBoardProps) {
   return (
     <KanbanProvider onDragEnd={onDragEnd}>
@@ -49,7 +51,8 @@ function TaskKanbanBoard({
                   status={statusKey}
                   onViewDetails={onViewTaskDetails}
                   isOpen={selectedTaskId === task.id}
-                  projectId={projectId}
+                  projectId={projectId ?? task.project_id}
+                  projectName={projectNames?.[task.project_id]}
                 />
               ))}
             </KanbanCards>

@@ -44,6 +44,21 @@ pub struct TaskWithAttemptStatus {
     pub executor: String,
 }
 
+#[derive(FromRow)]
+struct TaskWithAttemptStatusRow {
+    id: Uuid,
+    project_id: Uuid,
+    title: String,
+    description: Option<String>,
+    status: TaskStatus,
+    parent_workspace_id: Option<Uuid>,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
+    has_in_progress_attempt: i64,
+    last_attempt_failed: i64,
+    executor: String,
+}
+
 impl std::ops::Deref for TaskWithAttemptStatus {
     type Target = Task;
     fn deref(&self) -> &Self::Target {
@@ -163,6 +178,79 @@ FROM tasks t
 WHERE t.project_id = $1
 ORDER BY t.created_at DESC"#,
             project_id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        let tasks = records
+            .into_iter()
+            .map(|rec| TaskWithAttemptStatus {
+                task: Task {
+                    id: rec.id,
+                    project_id: rec.project_id,
+                    title: rec.title,
+                    description: rec.description,
+                    status: rec.status,
+                    parent_workspace_id: rec.parent_workspace_id,
+                    created_at: rec.created_at,
+                    updated_at: rec.updated_at,
+                },
+                has_in_progress_attempt: rec.has_in_progress_attempt != 0,
+                last_attempt_failed: rec.last_attempt_failed != 0,
+                executor: rec.executor,
+            })
+            .collect();
+
+        Ok(tasks)
+    }
+
+    pub async fn find_all_with_attempt_status(
+        pool: &SqlitePool,
+    ) -> Result<Vec<TaskWithAttemptStatus>, sqlx::Error> {
+        let records = sqlx::query_as::<_, TaskWithAttemptStatusRow>(
+            r#"SELECT
+  t.id,
+  t.project_id,
+  t.title,
+  t.description,
+  t.status,
+  t.parent_workspace_id,
+  t.created_at,
+  t.updated_at,
+
+  CASE WHEN EXISTS (
+    SELECT 1
+      FROM workspaces w
+      JOIN sessions s ON s.workspace_id = w.id
+      JOIN execution_processes ep ON ep.session_id = s.id
+     WHERE w.task_id       = t.id
+       AND ep.status        = 'running'
+       AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')
+     LIMIT 1
+  ) THEN 1 ELSE 0 END            AS has_in_progress_attempt,
+
+  CASE WHEN (
+    SELECT ep.status
+      FROM workspaces w
+      JOIN sessions s ON s.workspace_id = w.id
+      JOIN execution_processes ep ON ep.session_id = s.id
+     WHERE w.task_id       = t.id
+     AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')
+     ORDER BY ep.created_at DESC
+     LIMIT 1
+  ) IN ('failed','killed') THEN 1 ELSE 0 END
+                                 AS last_attempt_failed,
+
+  ( SELECT s.executor
+      FROM workspaces w
+      JOIN sessions s ON s.workspace_id = w.id
+      WHERE w.task_id = t.id
+     ORDER BY s.created_at DESC
+      LIMIT 1
+    )                               AS executor
+
+FROM tasks t
+ORDER BY t.created_at DESC"#,
         )
         .fetch_all(pool)
         .await?;
@@ -369,5 +457,47 @@ ORDER BY t.created_at DESC"#,
             current_workspace: workspace.clone(),
             children,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[sqlx::test(migrations = "./migrations")]
+    async fn find_all_with_attempt_status_returns_tasks_from_every_project(
+        pool: SqlitePool,
+    ) -> Result<(), sqlx::Error> {
+        let first_project_id = Uuid::new_v4();
+        let second_project_id = Uuid::new_v4();
+        for (project_id, name) in [
+            (first_project_id, "First project"),
+            (second_project_id, "Second project"),
+        ] {
+            sqlx::query("INSERT INTO projects (id, name) VALUES ($1, $2)")
+                .bind(project_id)
+                .bind(name)
+                .execute(&pool)
+                .await?;
+        }
+
+        for (project_id, title) in [
+            (first_project_id, "First task"),
+            (second_project_id, "Second task"),
+        ] {
+            let task = CreateTask::from_title_description(project_id, title.to_string(), None);
+            Task::create(&pool, &task, Uuid::new_v4()).await?;
+        }
+
+        let tasks = Task::find_all_with_attempt_status(&pool).await?;
+
+        assert_eq!(tasks.len(), 2);
+        assert!(tasks.iter().any(|task| task.project_id == first_project_id));
+        assert!(
+            tasks
+                .iter()
+                .any(|task| task.project_id == second_project_id)
+        );
+        Ok(())
     }
 }

@@ -26,11 +26,17 @@ import { WorkspaceWithSession } from '@/types/attempt';
 interface ActionsDropdownProps {
   task?: TaskWithAttemptStatus | null;
   attempt?: WorkspaceWithSession | null;
+  projectId?: string;
 }
 
-export function ActionsDropdown({ task, attempt }: ActionsDropdownProps) {
+export function ActionsDropdown({
+  task,
+  attempt,
+  projectId: projectIdOverride,
+}: ActionsDropdownProps) {
   const { t } = useTranslation('tasks');
-  const { projectId } = useProject();
+  const { projectId: contextProjectId } = useProject();
+  const projectId = projectIdOverride ?? contextProjectId;
   const openInEditor = useOpenInEditor(attempt?.id);
   const navigate = useNavigate();
 

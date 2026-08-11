@@ -30,8 +30,10 @@ export function SearchProvider({ children }: SearchProviderProps) {
   const { projectId } = useParams<{ projectId: string }>();
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  // Check if we're on a tasks route
-  const isTasksRoute = /^\/projects\/[^/]+\/tasks/.test(location.pathname);
+  const isTasksRoute =
+    location.pathname === '/' ||
+    location.pathname === '/projects' ||
+    /^\/projects\/[^/]+\/tasks/.test(location.pathname);
 
   // Clear search when leaving tasks pages
   useEffect(() => {

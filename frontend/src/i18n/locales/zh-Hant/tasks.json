@@ -15,6 +15,23 @@
     }
   },
   "loading": "載入任務中...",
+  "overview": {
+    "title": "任務看板",
+    "subtitle": "集中查看所有專案中的工作。",
+    "taskCount": "{{count}} 個任務",
+    "projectCount": "{{count}} 個專案",
+    "filterProject": "按專案篩選",
+    "allProjects": "全部專案",
+    "createTask": "建立任務",
+    "chooseProjectTitle": "選擇專案",
+    "chooseProjectDescription": "請選擇這個任務所屬的專案。",
+    "noProjectsTitle": "先建立一個專案",
+    "noProjectsDescription": "每個任務都需要歸屬專案。建立專案後即可開始規劃工作。",
+    "createProject": "建立專案",
+    "noTasks": "還沒有任務，先向看板新增第一項工作吧。",
+    "noFilteredTasks": "沒有任務符合目前專案或搜尋條件。",
+    "loadError": "無法載入任務看板"
+  },
   "empty": {
     "noTasks": "找不到此專案的任務。",
     "createFirst": "建立第一個任務",

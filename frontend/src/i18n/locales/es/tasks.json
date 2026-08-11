@@ -320,6 +320,23 @@
     }
   },
   "loading": "Cargando tareas...",
+  "overview": {
+    "title": "Tablero de tareas",
+    "subtitle": "Todo el trabajo de tus proyectos en un solo lugar.",
+    "taskCount": "{{count}} tareas",
+    "projectCount": "{{count}} proyectos",
+    "filterProject": "Filtrar por proyecto",
+    "allProjects": "Todos los proyectos",
+    "createTask": "Crear tarea",
+    "chooseProjectTitle": "Elegir un proyecto",
+    "chooseProjectDescription": "Selecciona el proyecto al que pertenece esta tarea.",
+    "noProjectsTitle": "Crea primero un proyecto",
+    "noProjectsDescription": "Cada tarea pertenece a un proyecto. Crea uno para empezar a planificar el trabajo.",
+    "createProject": "Crear proyecto",
+    "noTasks": "Todavía no hay tareas. Añade el primer elemento al tablero.",
+    "noFilteredTasks": "Ninguna tarea coincide con el proyecto o la búsqueda actual.",
+    "loadError": "No se pudo cargar el tablero de tareas"
+  },
   "preview": {
     "devScript": {
       "cancel": "Cancelar",

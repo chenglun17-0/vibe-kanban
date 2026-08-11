@@ -320,6 +320,23 @@
     }
   },
   "loading": "タスクを読み込み中...",
+  "overview": {
+    "title": "タスクボード",
+    "subtitle": "すべてのプロジェクトの作業を一か所で確認できます。",
+    "taskCount": "{{count}} 件のタスク",
+    "projectCount": "{{count}} 件のプロジェクト",
+    "filterProject": "プロジェクトで絞り込む",
+    "allProjects": "すべてのプロジェクト",
+    "createTask": "タスクを作成",
+    "chooseProjectTitle": "プロジェクトを選択",
+    "chooseProjectDescription": "このタスクが属するプロジェクトを選択してください。",
+    "noProjectsTitle": "まずプロジェクトを作成してください",
+    "noProjectsDescription": "すべてのタスクにはプロジェクトが必要です。プロジェクトを作成して作業を計画しましょう。",
+    "createProject": "プロジェクトを作成",
+    "noTasks": "タスクはまだありません。最初の作業をボードに追加しましょう。",
+    "noFilteredTasks": "現在のプロジェクトまたは検索条件に一致するタスクはありません。",
+    "loadError": "タスクボードを読み込めませんでした"
+  },
   "preview": {
     "devScript": {
       "cancel": "キャンセル",

@@ -16,18 +16,20 @@ export interface UseProjectTasksResult {
 }
 
 /**
- * Stream tasks for a project via WebSocket (JSON Patch) and expose as array + map.
- * Server sends initial snapshot: replace /tasks with an object keyed by id.
- * Live updates arrive at /tasks/<id> via add/replace/remove operations.
+ * Stream tasks via WebSocket (JSON Patch) and expose them as arrays and maps.
+ * Omitting projectId subscribes to tasks from every project; an empty projectId
+ * keeps project-scoped consumers disabled until their route is ready.
  */
-export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
-  const endpoint = `/api/tasks/stream/ws?project_id=${encodeURIComponent(projectId)}`;
+export const useTasks = (projectId?: string): UseProjectTasksResult => {
+  const endpoint = projectId
+    ? `/api/tasks/stream/ws?project_id=${encodeURIComponent(projectId)}`
+    : '/api/tasks/stream/ws';
 
   const initialData = useCallback((): TasksState => ({ tasks: {} }), []);
 
   const { data, isConnected, isInitialized, error } = useJsonPatchWsStream(
     endpoint,
-    !!projectId,
+    projectId !== '',
     initialData
   );
 
@@ -75,3 +77,6 @@ export const useProjectTasks = (projectId: string): UseProjectTasksResult => {
     error,
   };
 };
+
+export const useProjectTasks = (projectId: string): UseProjectTasksResult =>
+  useTasks(projectId);
