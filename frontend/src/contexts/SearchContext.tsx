@@ -31,8 +31,7 @@ export function SearchProvider({ children }: SearchProviderProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const isTasksRoute =
-    location.pathname === '/' ||
-    location.pathname === '/projects' ||
+    /^\/tasks(?:\/|$)/.test(location.pathname) ||
     /^\/projects\/[^/]+\/tasks/.test(location.pathname);
 
   // Clear search when leaving tasks pages

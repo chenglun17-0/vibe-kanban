@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -36,13 +37,17 @@ const CreateAttemptDialogImpl = NiceModal.create<CreateAttemptDialogProps>(
   ({ taskId }) => {
     const modal = useModal();
     const navigate = useNavigateWithSearch();
+    const location = useLocation();
     const { projectId } = useProject();
+    const isGlobalTasksRoute = /^\/tasks(?:\/|$)/.test(location.pathname);
     const { t } = useTranslation('tasks');
     const { profiles, config } = useUserSystem();
     const { createAttempt, isCreating, error } = useAttemptCreation({
       taskId,
       onSuccess: (attempt) => {
-        if (projectId) {
+        if (isGlobalTasksRoute) {
+          navigate(paths.globalAttempt(taskId, attempt.id));
+        } else if (projectId) {
           navigate(paths.attempt(projectId, taskId, attempt.id));
         }
       },

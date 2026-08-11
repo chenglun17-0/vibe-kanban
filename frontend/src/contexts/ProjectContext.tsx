@@ -8,6 +8,7 @@ import {
 import { useLocation } from 'react-router-dom';
 import type { Project } from 'shared/types';
 import { useProjects } from '@/hooks/useProjects';
+import { useTask } from '@/hooks/useTask';
 
 interface ProjectContextValue {
   projectId: string | undefined;
@@ -26,14 +27,29 @@ interface ProjectProviderProps {
 export function ProjectProvider({ children }: ProjectProviderProps) {
   const location = useLocation();
 
-  // Extract projectId from current route path
-  const projectId = useMemo(() => {
-    const match = location.pathname.match(/^\/projects\/([^/]+)/);
-    return match ? match[1] : undefined;
+  const { routeProjectId, routeTaskId } = useMemo(() => {
+    const projectMatch = location.pathname.match(/^\/projects\/([^/]+)/);
+    const taskMatch = location.pathname.match(/^\/tasks\/([^/]+)/);
+    return {
+      routeProjectId: projectMatch?.[1],
+      routeTaskId: taskMatch?.[1],
+    };
   }, [location.pathname]);
 
-  const { projectsById, isLoading, error } = useProjects();
+  const {
+    projectsById,
+    isLoading: projectsLoading,
+    error: projectsError,
+  } = useProjects();
+  const {
+    data: routeTask,
+    isLoading: taskLoading,
+    error: taskError,
+  } = useTask(routeTaskId);
+  const projectId = routeProjectId ?? routeTask?.project_id;
   const project = projectId ? projectsById[projectId] : undefined;
+  const isLoading = projectsLoading || (!!routeTaskId && taskLoading);
+  const error = projectsError ?? taskError;
 
   const value = useMemo(
     () => ({

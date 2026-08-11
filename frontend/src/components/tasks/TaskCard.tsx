@@ -9,6 +9,7 @@ import { paths } from '@/lib/paths';
 import { attemptsApi } from '@/lib/api';
 import { TaskCardHeader } from './TaskCardHeader';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 
 type Task = TaskWithAttemptStatus;
 
@@ -33,6 +34,8 @@ export function TaskCard({
 }: TaskCardProps) {
   const { t } = useTranslation('tasks');
   const navigate = useNavigateWithSearch();
+  const location = useLocation();
+  const isGlobalTasksRoute = /^\/tasks(?:\/|$)/.test(location.pathname);
   const [isNavigatingToParent, setIsNavigatingToParent] = useState(false);
 
   const handleClick = useCallback(() => {
@@ -48,18 +51,29 @@ export function TaskCard({
       try {
         const parentAttempt = await attemptsApi.get(task.parent_workspace_id);
         navigate(
-          paths.attempt(
-            projectId,
-            parentAttempt.task_id,
-            task.parent_workspace_id
-          )
+          isGlobalTasksRoute
+            ? paths.globalAttempt(
+                parentAttempt.task_id,
+                task.parent_workspace_id
+              )
+            : paths.attempt(
+                projectId,
+                parentAttempt.task_id,
+                task.parent_workspace_id
+              )
         );
       } catch (error) {
         console.error('Failed to navigate to parent task attempt:', error);
         setIsNavigatingToParent(false);
       }
     },
-    [task.parent_workspace_id, projectId, navigate, isNavigatingToParent]
+    [
+      task.parent_workspace_id,
+      projectId,
+      navigate,
+      isNavigatingToParent,
+      isGlobalTasksRoute,
+    ]
   );
 
   const localRef = useRef<HTMLDivElement>(null);

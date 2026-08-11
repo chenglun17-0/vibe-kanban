@@ -12,10 +12,13 @@ import type {
   UpdateTask,
 } from 'shared/types';
 import { taskKeys } from './useTask';
+import { useLocation } from 'react-router-dom';
 
 export function useTaskMutations(projectId?: string) {
   const queryClient = useQueryClient();
   const navigate = useNavigateWithSearch();
+  const location = useLocation();
+  const isGlobalTasksRoute = /^\/tasks(?:\/|$)/.test(location.pathname);
 
   const invalidateQueries = (taskId?: string) => {
     queryClient.invalidateQueries({ queryKey: taskKeys.all });
@@ -36,7 +39,9 @@ export function useTaskMutations(projectId?: string) {
           ),
         });
       }
-      if (projectId) {
+      if (isGlobalTasksRoute) {
+        navigate(paths.globalAttempt(createdTask.id, 'latest'));
+      } else if (projectId) {
         navigate(`${paths.task(projectId, createdTask.id)}/attempts/latest`);
       }
     },
@@ -58,7 +63,9 @@ export function useTaskMutations(projectId?: string) {
           ),
         });
       }
-      if (projectId) {
+      if (isGlobalTasksRoute) {
+        navigate(paths.globalAttempt(createdTask.id, 'latest'));
+      } else if (projectId) {
         navigate(`${paths.task(projectId, createdTask.id)}/attempts/latest`);
       }
     },

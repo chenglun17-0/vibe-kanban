@@ -7,6 +7,7 @@ import { useUserSystem } from '@/components/ConfigProvider';
 import { paths } from '@/lib/paths';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
+import { useLocation } from 'react-router-dom';
 import { NewCardContent } from '../ui/new-card';
 import { Button } from '../ui/button';
 import { PlusIcon } from 'lucide-react';
@@ -21,7 +22,9 @@ interface TaskPanelProps {
 const TaskPanel = ({ task }: TaskPanelProps) => {
   const { t } = useTranslation('tasks');
   const navigate = useNavigateWithSearch();
+  const location = useLocation();
   const { projectId } = useProject();
+  const isGlobalTasksRoute = /^\/tasks(?:\/|$)/.test(location.pathname);
   const { config } = useUserSystem();
 
   const {
@@ -119,6 +122,8 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
                 onRowClick={(attempt) => {
                   if (config?.beta_workspaces) {
                     navigate(`/workspaces/${attempt.id}`);
+                  } else if (isGlobalTasksRoute) {
+                    navigate(paths.globalAttempt(attempt.task_id, attempt.id));
                   } else if (projectId) {
                     navigate(
                       paths.attempt(projectId, attempt.task_id, attempt.id)
@@ -146,7 +151,9 @@ const TaskPanel = ({ task }: TaskPanelProps) => {
                 onRowClick={(attempt) => {
                   if (config?.beta_workspaces) {
                     navigate(`/workspaces/${attempt.id}`);
-                  } else if (projectId && task.id) {
+                  } else if (isGlobalTasksRoute) {
+                    navigate(paths.globalAttempt(task.id, attempt.id));
+                  } else if (projectId) {
                     navigate(paths.attempt(projectId, task.id, attempt.id));
                   }
                 }}

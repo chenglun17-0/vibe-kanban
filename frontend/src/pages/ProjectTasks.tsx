@@ -1,5 +1,10 @@
-import { useCallback, useEffect, useMemo } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -47,7 +52,7 @@ import TaskKanbanBoard, {
   type KanbanColumns,
 } from '@/components/tasks/TaskKanbanBoard';
 import type { DragEndEvent } from '@/components/ui/shadcn-io/kanban';
-import { useProjectTasks } from '@/hooks/useProjectTasks';
+import { useTasks } from '@/hooks/useProjectTasks';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { TasksLayout, type LayoutMode } from '@/components/layout/TasksLayout';
@@ -67,6 +72,7 @@ import {
 } from '@/components/ui/breadcrumb';
 import { AttemptHeaderActions } from '@/components/panels/AttemptHeaderActions';
 import { TaskPanelHeaderActions } from '@/components/panels/TaskPanelHeaderActions';
+import { TaskProjectPickerDialog } from '@/components/dialogs/tasks/TaskProjectPickerDialog';
 
 import type { TaskWithAttemptStatus, TaskStatus } from 'shared/types';
 
@@ -129,23 +135,29 @@ function DiffsPanelContainer({
 
 export function ProjectTasks() {
   const { t } = useTranslation(['tasks', 'common']);
-  const { taskId, attemptId } = useParams<{
-    projectId: string;
+  const {
+    projectId: routeProjectId,
+    taskId,
+    attemptId,
+  } = useParams<{
+    projectId?: string;
     taskId?: string;
     attemptId?: string;
   }>();
+  const location = useLocation();
   const navigate = useNavigate();
+  const isGlobalTasksRoute = /^\/tasks(?:\/|$)/.test(location.pathname);
+  const boardPath = isGlobalTasksRoute
+    ? paths.tasks()
+    : paths.projectTasks(routeProjectId!);
   const { enableScope, disableScope, activeScopes } = useHotkeysContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const isXL = useMediaQuery('(min-width: 1280px)');
   const isMobile = !isXL;
   const posthog = usePostHog();
 
-  const {
-    projectId,
-    isLoading: projectLoading,
-    error: projectError,
-  } = useProject();
+  const { isLoading: projectLoading, error: projectError } = useProject();
+  const [isProjectPickerOpen, setIsProjectPickerOpen] = useState(false);
 
   useEffect(() => {
     enableScope(Scope.KANBAN);
@@ -156,10 +168,18 @@ export function ProjectTasks() {
   }, [enableScope, disableScope]);
 
   const handleCreateTask = useCallback(() => {
-    if (projectId) {
-      openTaskForm({ mode: 'create', projectId });
+    if (isGlobalTasksRoute) {
+      setIsProjectPickerOpen(true);
+      return;
     }
-  }, [projectId]);
+    if (routeProjectId) {
+      openTaskForm({ mode: 'create', projectId: routeProjectId });
+    }
+  }, [isGlobalTasksRoute, routeProjectId]);
+
+  const handleSelectProjectForTask = useCallback((projectId: string) => {
+    openTaskForm({ mode: 'create', projectId });
+  }, []);
   const { query: searchQuery, focusInput } = useSearch();
 
   const {
@@ -167,7 +187,7 @@ export function ProjectTasks() {
     tasksById,
     isLoading,
     error: streamError,
-  } = useProjectTasks(projectId || '');
+  } = useTasks(isGlobalTasksRoute ? undefined : routeProjectId || '');
 
   const selectedTask = useMemo(
     () => (taskId ? (tasksById[taskId] ?? null) : null),
@@ -270,35 +290,49 @@ export function ProjectTasks() {
     [navigate, searchParams]
   );
 
+  const getTaskPath = useCallback(
+    (targetTaskId: string) =>
+      isGlobalTasksRoute
+        ? paths.globalTask(targetTaskId)
+        : paths.task(routeProjectId!, targetTaskId),
+    [isGlobalTasksRoute, routeProjectId]
+  );
+
+  const getAttemptPath = useCallback(
+    (targetTaskId: string, targetAttemptId: string) =>
+      isGlobalTasksRoute
+        ? paths.globalAttempt(targetTaskId, targetAttemptId)
+        : paths.attempt(routeProjectId!, targetTaskId, targetAttemptId),
+    [isGlobalTasksRoute, routeProjectId]
+  );
+
   useEffect(() => {
-    if (!projectId || !taskId) return;
-    if (!isLatest) return;
-    if (isAttemptsLoading) return;
+    if (!taskId || !isLatest || isAttemptsLoading) return;
 
     if (!latestAttemptId) {
-      navigateWithSearch(paths.task(projectId, taskId), { replace: true });
+      navigateWithSearch(getTaskPath(taskId), { replace: true });
       return;
     }
 
-    navigateWithSearch(paths.attempt(projectId, taskId, latestAttemptId), {
+    navigateWithSearch(getAttemptPath(taskId, latestAttemptId), {
       replace: true,
     });
   }, [
-    projectId,
     taskId,
     isLatest,
     isAttemptsLoading,
     latestAttemptId,
-    navigate,
+    getTaskPath,
+    getAttemptPath,
     navigateWithSearch,
   ]);
 
   useEffect(() => {
-    if (!projectId || !taskId || isLoading) return;
+    if (!taskId || isLoading) return;
     if (selectedTask === null) {
-      navigate(`/projects/${projectId}/tasks`, { replace: true });
+      navigate(boardPath, { replace: true });
     }
-  }, [projectId, taskId, isLoading, selectedTask, navigate]);
+  }, [boardPath, taskId, isLoading, selectedTask, navigate]);
 
   const effectiveAttemptId = attemptId === 'latest' ? undefined : attemptId;
   const isTaskView = !!taskId && !effectiveAttemptId;
@@ -360,7 +394,7 @@ export function ProjectTasks() {
       if (isPanelOpen) {
         handleClosePanel();
       } else {
-        navigate('/projects');
+        navigate(paths.tasks());
       }
     },
     { scope: Scope.KANBAN }
@@ -577,28 +611,23 @@ export function ProjectTasks() {
   );
 
   const handleClosePanel = useCallback(() => {
-    if (projectId) {
-      navigate(`/projects/${projectId}/tasks`, { replace: true });
-    }
-  }, [projectId, navigate]);
+    navigate(boardPath, { replace: true });
+  }, [boardPath, navigate]);
 
   const handleViewTaskDetails = useCallback(
     (task: Task, attemptIdToShow?: string) => {
-      if (!projectId) return;
-
-      // If beta_workspaces is enabled, always navigate to task view (not attempt)
       if (config?.beta_workspaces) {
-        navigateWithSearch(paths.task(projectId, task.id));
+        navigateWithSearch(getTaskPath(task.id));
         return;
       }
 
       if (attemptIdToShow) {
-        navigateWithSearch(paths.attempt(projectId, task.id, attemptIdToShow));
+        navigateWithSearch(getAttemptPath(task.id, attemptIdToShow));
       } else {
-        navigateWithSearch(`${paths.task(projectId, task.id)}/attempts/latest`);
+        navigateWithSearch(getAttemptPath(task.id, 'latest'));
       }
     },
-    [projectId, navigateWithSearch, config?.beta_workspaces]
+    [config?.beta_workspaces, getAttemptPath, getTaskPath, navigateWithSearch]
   );
 
   const selectNextTask = useCallback(() => {
@@ -755,7 +784,9 @@ export function ProjectTasks() {
       <div className="max-w-7xl mx-auto mt-8">
         <Card>
           <CardContent className="text-center py-8">
-            <p className="text-muted-foreground">{t('empty.noTasks')}</p>
+            <p className="text-muted-foreground">
+              {isGlobalTasksRoute ? t('overview.noTasks') : t('empty.noTasks')}
+            </p>
             <Button className="mt-4" onClick={handleCreateNewTask}>
               <Plus className="h-4 w-4 mr-2" />
               {t('empty.createFirst')}
@@ -781,7 +812,7 @@ export function ProjectTasks() {
           onViewTaskDetails={handleViewTaskDetails}
           selectedTaskId={selectedTask?.id}
           onCreateTask={handleCreateNewTask}
-          projectId={projectId!}
+          projectId={routeProjectId}
         />
       </div>
     );
@@ -793,9 +824,7 @@ export function ProjectTasks() {
         isTaskView ? (
           <TaskPanelHeaderActions
             task={selectedTask}
-            onClose={() =>
-              navigate(`/projects/${projectId}/tasks`, { replace: true })
-            }
+            onClose={handleClosePanel}
           />
         ) : (
           <AttemptHeaderActions
@@ -803,9 +832,7 @@ export function ProjectTasks() {
             onModeChange={setMode}
             task={selectedTask}
             attempt={attempt ?? null}
-            onClose={() =>
-              navigate(`/projects/${projectId}/tasks`, { replace: true })
-            }
+            onClose={handleClosePanel}
           />
         )
       }
@@ -821,9 +848,7 @@ export function ProjectTasks() {
               ) : (
                 <BreadcrumbLink
                   className="cursor-pointer hover:underline"
-                  onClick={() =>
-                    navigateWithSearch(paths.task(projectId!, taskId!))
-                  }
+                  onClick={() => navigateWithSearch(getTaskPath(taskId!))}
                 >
                   {truncateTitle(selectedTask?.title)}
                 </BreadcrumbLink>
@@ -929,6 +954,14 @@ export function ProjectTasks() {
       )}
 
       <div className="flex-1 min-h-0">{attemptArea}</div>
+
+      {isProjectPickerOpen && (
+        <TaskProjectPickerDialog
+          open
+          onOpenChange={setIsProjectPickerOpen}
+          onSelectProject={handleSelectProjectForTask}
+        />
+      )}
     </div>
   );
 }

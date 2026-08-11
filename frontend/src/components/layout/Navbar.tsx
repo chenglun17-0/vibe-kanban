@@ -1,5 +1,5 @@
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
-import { useCallback } from 'react';
+import { useCallback, type AnchorHTMLAttributes } from 'react';
 import { siDiscord } from 'simple-icons';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,7 +10,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  FolderOpen,
   Settings,
   BookOpen,
   MessageCircleQuestion,
@@ -19,6 +18,7 @@ import {
   Plus,
   LogOut,
   LogIn,
+  SquareKanban,
 } from 'lucide-react';
 import { Logo } from '@/components/Logo';
 import { SearchBar } from '@/components/SearchBar';
@@ -41,7 +41,7 @@ import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { oauthApi } from '@/lib/api';
 
-const INTERNAL_NAV = [{ label: 'Projects', icon: FolderOpen, to: '/projects' }];
+const INTERNAL_NAV = [{ label: 'Tasks', icon: SquareKanban, to: '/tasks' }];
 
 const EXTERNAL_LINKS = [
   {
@@ -60,6 +60,10 @@ const EXTERNAL_LINKS = [
     href: 'https://discord.gg/AC4nwVtJM3',
   },
 ];
+
+function ExternalNavLink(props: AnchorHTMLAttributes<HTMLAnchorElement>) {
+  return <a {...props} />;
+}
 
 function NavDivider() {
   return (
@@ -142,10 +146,10 @@ export function Navbar() {
       <div className="w-full px-3">
         <div className="flex items-center h-12 py-2">
           <div className="flex-1 flex items-center">
-            <Link to="/projects">
+            <Link to="/tasks">
               <Logo />
             </Link>
-            <a
+            <ExternalNavLink
               href="https://discord.gg/AC4nwVtJM3"
               target="_blank"
               rel="noopener noreferrer"
@@ -170,7 +174,7 @@ export function Navbar() {
                   ? `${onlineCount.toLocaleString()} online`
                   : 'online'}
               </span>
-            </a>
+            </ExternalNavLink>
           </div>
 
           <div className="hidden sm:flex items-center gap-2">
@@ -296,14 +300,14 @@ export function Navbar() {
                     const Icon = item.icon;
                     return (
                       <DropdownMenuItem key={item.href} asChild>
-                        <a
+                        <ExternalNavLink
                           href={item.href}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
                           <Icon className="mr-2 h-4 w-4" />
                           {item.label}
-                        </a>
+                        </ExternalNavLink>
                       </DropdownMenuItem>
                     );
                   })}
