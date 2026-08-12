@@ -17,8 +17,9 @@
 //! network operations when useful.
 use std::{
     ffi::{OsStr, OsString},
+    fs,
     io::Write as _,
-    path::Path,
+    path::{Path, PathBuf},
     process::{Command, Stdio},
 };
 
@@ -43,6 +44,12 @@ pub enum GitCliError {
 
 #[derive(Clone, Default)]
 pub struct GitCli;
+
+struct SparseCheckoutState {
+    patterns: Vec<u8>,
+    cone: Option<bool>,
+    sparse_index: Option<bool>,
+}
 
 /// Parsed change type from `git diff --name-status` output
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -90,6 +97,7 @@ impl GitCli {
         create_branch: bool,
     ) -> Result<(), GitCliError> {
         self.ensure_available()?;
+        let sparse_checkout = self.read_sparse_checkout_state(repo_path)?;
 
         let mut args: Vec<OsString> = vec!["worktree".into(), "add".into()];
         if create_branch {
@@ -100,10 +108,85 @@ impl GitCli {
         args.push(OsString::from(branch));
         self.git(repo_path, args)?;
 
-        // Good practice: reapply sparse-checkout in the new worktree to ensure materialization matches
-        // Non-fatal if it fails or not configured.
-        let _ = self.git(worktree_path, ["sparse-checkout", "reapply"]);
+        if let Some(state) = sparse_checkout {
+            self.apply_sparse_checkout_state(worktree_path, state)?;
+        }
 
+        Ok(())
+    }
+
+    fn read_sparse_checkout_state(
+        &self,
+        repo_path: &Path,
+    ) -> Result<Option<SparseCheckoutState>, GitCliError> {
+        if self.read_optional_bool_config(repo_path, "core.sparseCheckout") != Some(true) {
+            return Ok(None);
+        }
+
+        let git_dir = PathBuf::from(
+            self.git(repo_path, ["rev-parse", "--absolute-git-dir"])?
+                .trim(),
+        );
+        let patterns = fs::read(git_dir.join("info/sparse-checkout")).map_err(|e| {
+            GitCliError::CommandFailed(format!("failed to read sparse-checkout patterns: {e}"))
+        })?;
+
+        Ok(Some(SparseCheckoutState {
+            patterns,
+            cone: self.read_optional_bool_config(repo_path, "core.sparseCheckoutCone"),
+            sparse_index: self.read_optional_bool_config(repo_path, "index.sparse"),
+        }))
+    }
+
+    fn apply_sparse_checkout_state(
+        &self,
+        worktree_path: &Path,
+        state: SparseCheckoutState,
+    ) -> Result<(), GitCliError> {
+        let git_dir = PathBuf::from(
+            self.git(worktree_path, ["rev-parse", "--absolute-git-dir"])?
+                .trim(),
+        );
+        let info_dir = git_dir.join("info");
+        fs::create_dir_all(&info_dir).map_err(|e| {
+            GitCliError::CommandFailed(format!("failed to create sparse-checkout info dir: {e}"))
+        })?;
+        fs::write(info_dir.join("sparse-checkout"), state.patterns).map_err(|e| {
+            GitCliError::CommandFailed(format!("failed to copy sparse-checkout patterns: {e}"))
+        })?;
+
+        self.write_worktree_bool_config(worktree_path, "core.sparseCheckout", true)?;
+        if let Some(cone) = state.cone {
+            self.write_worktree_bool_config(worktree_path, "core.sparseCheckoutCone", cone)?;
+        }
+        if let Some(sparse_index) = state.sparse_index {
+            self.write_worktree_bool_config(worktree_path, "index.sparse", sparse_index)?;
+        }
+        self.git(worktree_path, ["sparse-checkout", "reapply"])?;
+        Ok(())
+    }
+
+    fn read_optional_bool_config(&self, repo_path: &Path, key: &str) -> Option<bool> {
+        let value = self
+            .git(repo_path, ["config", "--bool", "--get", key])
+            .ok()?;
+        match value.trim() {
+            "true" => Some(true),
+            "false" => Some(false),
+            _ => None,
+        }
+    }
+
+    fn write_worktree_bool_config(
+        &self,
+        worktree_path: &Path,
+        key: &str,
+        value: bool,
+    ) -> Result<(), GitCliError> {
+        self.git(
+            worktree_path,
+            ["config", "--worktree", key, value.to_string().as_str()],
+        )?;
         Ok(())
     }
 
