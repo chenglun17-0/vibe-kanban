@@ -21,9 +21,7 @@
         "agents": "Agents",
         "agentsDesc": "Coding agent configurations",
         "mcp": "MCP Servers",
-        "mcpDesc": "Model Context Protocol servers",
-        "organizations": "Organization Settings",
-        "organizationsDesc": "Manage organization members and permissions"
+        "mcpDesc": "Model Context Protocol servers"
       }
     },
     "general": {

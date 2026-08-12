@@ -21,9 +21,7 @@
         "agents": "代理",
         "agentsDesc": "编码代理配置",
         "mcp": "MCP 服务器",
-        "mcpDesc": "模型上下文协议服务器",
-        "organizations": "组织设置",
-        "organizationsDesc": "管理组织成员和权限"
+        "mcpDesc": "模型上下文协议服务器"
       }
     },
     "general": {
