@@ -1,4 +1,5 @@
 pub mod client;
+pub mod history;
 pub mod jsonrpc;
 pub mod normalize_logs;
 pub mod review;

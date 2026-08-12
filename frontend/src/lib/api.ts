@@ -47,6 +47,8 @@ import {
   CheckEditorAvailabilityResponse,
   AvailabilityInfo,
   BaseCodingAgent,
+  NativeHistoryErrorResponse,
+  PatchType,
   ExecutorProfileId,
   RunAgentSetupRequest,
   RunAgentSetupResponse,
@@ -347,6 +349,18 @@ export const tasksApi = {
   },
 };
 
+/** Structured failure from the native conversation-history endpoint. */
+export class NativeHistoryError extends Error {
+  constructor(
+    message: string,
+    public readonly code: string,
+    public readonly retryable: boolean
+  ) {
+    super(message);
+    this.name = 'NativeHistoryError';
+  }
+}
+
 // Sessions API
 export const sessionsApi = {
   getByWorkspace: async (workspaceId: string): Promise<Session[]> => {
@@ -392,6 +406,31 @@ export const sessionsApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponse<ExecutionProcess, ReviewError>(response);
+  },
+
+  /**
+   * Completed-session conversation from the agent's native session file.
+   * Throws NativeHistoryError with a stable `code` on structured failures.
+   */
+  getConversationHistory: async (sessionId: string): Promise<PatchType[]> => {
+    const response = await makeRequest(
+      `/api/sessions/${sessionId}/conversation-history`
+    );
+    if (!response.ok) {
+      let payload: NativeHistoryErrorResponse | null = null;
+      try {
+        payload = (await response.json()) as NativeHistoryErrorResponse;
+      } catch {
+        // Non-structured error body; fall through to a generic error.
+      }
+      throw new NativeHistoryError(
+        payload?.message ??
+          `Failed to load conversation history (${response.status})`,
+        payload?.code ?? 'unknown',
+        payload?.retryable ?? false
+      );
+    }
+    return handleApiResponse<PatchType[]>(response);
   },
 };
 

@@ -10,6 +10,7 @@ pub mod filesystem;
 pub mod filesystem_watcher;
 pub mod git_host;
 pub mod image;
+pub mod native_history;
 pub mod notification;
 pub mod pr_monitor;
 pub mod project;

@@ -20,27 +20,16 @@ use crate::{
     approvals::ExecutorApprovalService,
     command::CommandBuildError,
     env::ExecutionEnv,
-    executors::{
-        amp::Amp, claude::ClaudeCode, codex::Codex, copilot::Copilot, cursor::CursorAgent,
-        droid::Droid, gemini::Gemini, opencode::Opencode, pi::Pi, qwen::QwenCode,
-    },
+    executors::{claude::ClaudeCode, codex::Codex, pi::Pi},
     logs::utils::patch,
     mcp_config::McpConfig,
 };
 
-pub mod acp;
-pub mod amp;
 pub mod claude;
 pub mod codex;
-pub mod copilot;
-pub mod cursor;
-pub mod droid;
-pub mod gemini;
-pub mod opencode;
 pub mod pi;
 #[cfg(feature = "qa-mode")]
 pub mod qa_mock;
-pub mod qwen;
 pub mod utils;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, TS)]
@@ -107,17 +96,7 @@ pub enum ExecutorError {
 )]
 pub enum CodingAgent {
     ClaudeCode,
-    Amp,
-    Gemini,
     Codex,
-    Opencode,
-    #[serde(alias = "CURSOR")]
-    #[strum_discriminants(serde(alias = "CURSOR"))]
-    #[strum_discriminants(strum(serialize = "CURSOR", serialize = "CURSOR_AGENT"))]
-    CursorAgent,
-    QwenCode,
-    Copilot,
-    Droid,
     Pi,
     #[cfg(feature = "qa-mode")]
     QaMock(QaMockExecutor),
@@ -133,31 +112,6 @@ impl CodingAgent {
                 }),
                 self.preconfigured_mcp(),
                 true,
-            ),
-            Self::Amp(_) => McpConfig::new(
-                vec!["amp.mcpServers".to_string()],
-                serde_json::json!({
-                    "amp.mcpServers": {}
-                }),
-                self.preconfigured_mcp(),
-                false,
-            ),
-            Self::Opencode(_) => McpConfig::new(
-                vec!["mcp".to_string()],
-                serde_json::json!({
-                    "mcp": {},
-                    "$schema": "https://opencode.ai/config.json"
-                }),
-                self.preconfigured_mcp(),
-                false,
-            ),
-            Self::Droid(_) => McpConfig::new(
-                vec!["mcpServers".to_string()],
-                serde_json::json!({
-                    "mcpServers": {}
-                }),
-                self.preconfigured_mcp(),
-                false,
             ),
             _ => McpConfig::new(
                 vec!["mcpServers".to_string()],
@@ -180,20 +134,11 @@ impl CodingAgent {
                 BaseAgentCapability::SessionFork,
                 BaseAgentCapability::ContextUsage,
             ],
-            Self::Opencode(_) => vec![
-                BaseAgentCapability::SessionFork,
-                BaseAgentCapability::ContextUsage,
-            ],
             Self::Codex(_) => vec![
                 BaseAgentCapability::SessionFork,
                 BaseAgentCapability::SetupHelper,
                 BaseAgentCapability::ContextUsage,
             ],
-            Self::Amp(_) | Self::Gemini(_) | Self::QwenCode(_) | Self::Droid(_) => {
-                vec![BaseAgentCapability::SessionFork]
-            }
-            Self::CursorAgent(_) => vec![BaseAgentCapability::SetupHelper],
-            Self::Copilot(_) => vec![],
             Self::Pi(_) => vec![BaseAgentCapability::ContextUsage],
             #[cfg(feature = "qa-mode")]
             Self::QaMock(_) => vec![], // QA mock doesn't need special capabilities
@@ -377,35 +322,3 @@ pub fn build_review_prompt(
     prompt
 }
 
-#[cfg(test)]
-mod tests {
-    use std::str::FromStr;
-
-    use super::*;
-
-    #[test]
-    fn test_cursor_agent_deserialization() {
-        // Test that CURSOR_AGENT is accepted
-        let result = BaseCodingAgent::from_str("CURSOR_AGENT");
-        assert!(result.is_ok(), "CURSOR_AGENT should be valid");
-        assert_eq!(result.unwrap(), BaseCodingAgent::CursorAgent);
-
-        // Test that legacy CURSOR is still accepted for backwards compatibility
-        let result = BaseCodingAgent::from_str("CURSOR");
-        assert!(
-            result.is_ok(),
-            "CURSOR should be valid for backwards compatibility"
-        );
-        assert_eq!(result.unwrap(), BaseCodingAgent::CursorAgent);
-
-        // Test serde deserialization for CURSOR_AGENT
-        let result: Result<BaseCodingAgent, _> = serde_json::from_str(r#""CURSOR_AGENT""#);
-        assert!(result.is_ok(), "CURSOR_AGENT should deserialize via serde");
-        assert_eq!(result.unwrap(), BaseCodingAgent::CursorAgent);
-
-        // Test serde deserialization for legacy CURSOR
-        let result: Result<BaseCodingAgent, _> = serde_json::from_str(r#""CURSOR""#);
-        assert!(result.is_ok(), "CURSOR should deserialize via serde");
-        assert_eq!(result.unwrap(), BaseCodingAgent::CursorAgent);
-    }
-}

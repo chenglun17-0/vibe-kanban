@@ -198,7 +198,7 @@ pub trait ContainerService {
         // Never finalize setup scripts without a next_action (parallel mode).
         // In sequential mode, setup scripts have next_action pointing to coding agent,
         // so they won't finalize anyway (handled by next_action.is_none() check below).
-        let action = ctx.execution_process.executor_action().unwrap();
+        let action = ctx.execution_process.executor_action();
         if matches!(
             ctx.execution_process.run_reason,
             ExecutionProcessRunReason::SetupScript
@@ -657,172 +657,20 @@ pub trait ContainerService {
         &self,
         id: &Uuid,
     ) -> Option<futures::stream::BoxStream<'static, Result<LogMsg, std::io::Error>>> {
-        // First try in-memory store (existing behavior)
-        if let Some(store) = self.get_msg_store_by_id(id).await {
-            Some(
-                store
-                    .history_plus_stream() // BoxStream<Result<LogMsg, io::Error>>
-                    .filter(|msg| future::ready(matches!(msg, Ok(LogMsg::JsonPatch(..)))))
-                    .chain(futures::stream::once(async {
-                        Ok::<_, std::io::Error>(LogMsg::Finished)
-                    }))
-                    .boxed(),
-            )
-        } else {
-            // Fallback: load from DB and normalize
-            let log_records =
-                match ExecutionProcessLogs::find_by_execution_id(&self.db().pool, *id).await {
-                    Ok(records) if !records.is_empty() => records,
-                    Ok(_) => return None, // No logs exist
-                    Err(e) => {
-                        tracing::error!("Failed to fetch logs for execution {}: {}", id, e);
-                        return None;
-                    }
-                };
-
-            let raw_messages = match ExecutionProcessLogs::parse_logs(&log_records) {
-                Ok(msgs) => msgs,
-                Err(e) => {
-                    tracing::error!("Failed to parse logs for execution {}: {}", id, e);
-                    return None;
-                }
-            };
-
-            // Create temporary store and populate
-            // Include JsonPatch messages (already normalized) and Stdout/Stderr (need normalization)
-            let temp_store = Arc::new(MsgStore::new());
-            for msg in raw_messages {
-                if matches!(
-                    msg,
-                    LogMsg::Stdout(_) | LogMsg::Stderr(_) | LogMsg::JsonPatch(_)
-                ) {
-                    temp_store.push(msg);
-                }
-            }
-            temp_store.push_finished();
-
-            let process = match ExecutionProcess::find_by_id(&self.db().pool, *id).await {
-                Ok(Some(process)) => process,
-                Ok(None) => {
-                    tracing::error!("No execution process found for ID: {}", id);
-                    return None;
-                }
-                Err(e) => {
-                    tracing::error!("Failed to fetch execution process {}: {}", id, e);
-                    return None;
-                }
-            };
-
-            // Get the workspace to determine correct directory
-            let (workspace, _session) =
-                match process.parent_workspace_and_session(&self.db().pool).await {
-                    Ok(Some((workspace, session))) => (workspace, session),
-                    Ok(None) => {
-                        tracing::error!(
-                            "No workspace/session found for session ID: {}",
-                            process.session_id
-                        );
-                        return None;
-                    }
-                    Err(e) => {
-                        tracing::error!(
-                            "Failed to fetch workspace for session {}: {}",
-                            process.session_id,
-                            e
-                        );
-                        return None;
-                    }
-                };
-
-            if let Err(err) = self.ensure_container_exists(&workspace).await {
-                tracing::warn!(
-                    "Failed to recreate worktree before log normalization for workspace {}: {}",
-                    workspace.id,
-                    err
-                );
-            }
-
-            let current_dir = self.workspace_to_current_dir(&workspace);
-
-            let executor_action = if let Ok(executor_action) = process.executor_action() {
-                executor_action
-            } else {
-                tracing::error!(
-                    "Failed to parse executor action: {:?}",
-                    process.executor_action()
-                );
-                return None;
-            };
-
-            // Spawn normalizer on populated store
-            match executor_action.typ() {
-                ExecutorActionType::CodingAgentInitialRequest(request) => {
-                    #[cfg(feature = "qa-mode")]
-                    {
-                        let executor = QaMockExecutor;
-                        executor.normalize_logs(
-                            temp_store.clone(),
-                            &request.effective_dir(&current_dir),
-                        );
-                    }
-                    #[cfg(not(feature = "qa-mode"))]
-                    {
-                        let executor = ExecutorConfigs::get_cached()
-                            .get_coding_agent_or_default(&request.executor_profile_id);
-                        executor.normalize_logs(
-                            temp_store.clone(),
-                            &request.effective_dir(&current_dir),
-                        );
-                    }
-                }
-                ExecutorActionType::CodingAgentFollowUpRequest(request) => {
-                    #[cfg(feature = "qa-mode")]
-                    {
-                        let executor = QaMockExecutor;
-                        executor.normalize_logs(
-                            temp_store.clone(),
-                            &request.effective_dir(&current_dir),
-                        );
-                    }
-                    #[cfg(not(feature = "qa-mode"))]
-                    {
-                        let executor = ExecutorConfigs::get_cached()
-                            .get_coding_agent_or_default(&request.executor_profile_id);
-                        executor.normalize_logs(
-                            temp_store.clone(),
-                            &request.effective_dir(&current_dir),
-                        );
-                    }
-                }
-                #[cfg(feature = "qa-mode")]
-                ExecutorActionType::ReviewRequest(_request) => {
-                    let executor = QaMockExecutor;
-                    executor.normalize_logs(temp_store.clone(), &current_dir);
-                }
-                #[cfg(not(feature = "qa-mode"))]
-                ExecutorActionType::ReviewRequest(request) => {
-                    let executor = ExecutorConfigs::get_cached()
-                        .get_coding_agent_or_default(&request.executor_profile_id);
-                    executor.normalize_logs(temp_store.clone(), &current_dir);
-                }
-                _ => {
-                    tracing::debug!(
-                        "Executor action doesn't support log normalization: {:?}",
-                        process.executor_action()
-                    );
-                    return None;
-                }
-            }
-            Some(
-                temp_store
-                    .history_plus_stream()
-                    .filter(|msg| future::ready(matches!(msg, Ok(LogMsg::JsonPatch(..)))))
-                    .chain(futures::stream::once(async {
-                        Ok::<_, std::io::Error>(LogMsg::Finished)
-                    }))
-                    .boxed(),
-            )
-        }
+        // Only live (in-memory) stores are served. Completed-process history
+        // comes from the native session history endpoint
+        // (`GET /api/sessions/{id}/conversation-history`); the DB
+        // re-normalization fallback was lossy (broadcast lag drops patches)
+        // and quadratic (per-delta patches), so it was removed.
+        self.get_msg_store_by_id(id).await.map(|store| {
+            store
+                .history_plus_stream() // BoxStream<Result<LogMsg, io::Error>>
+                .filter(|msg| future::ready(matches!(msg, Ok(LogMsg::JsonPatch(..)))))
+                .chain(futures::stream::once(async {
+                    Ok::<_, std::io::Error>(LogMsg::Finished)
+                }))
+                .boxed()
+        })
     }
 
     fn spawn_stream_raw_logs_to_db(&self, execution_id: &Uuid) -> JoinHandle<()> {
@@ -1199,7 +1047,7 @@ pub trait ContainerService {
     }
 
     async fn try_start_next_action(&self, ctx: &ExecutionContext) -> Result<(), ContainerError> {
-        let action = ctx.execution_process.executor_action()?;
+        let action = ctx.execution_process.executor_action();
         let next_action = if let Some(next_action) = action.next_action() {
             next_action
         } else {

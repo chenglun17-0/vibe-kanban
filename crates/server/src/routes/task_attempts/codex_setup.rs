@@ -1,7 +1,7 @@
 use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
     session::{CreateSession, Session},
-    workspace::{Workspace, WorkspaceError},
+    workspace::Workspace,
 };
 use deployment::Deployment;
 use executors::{
@@ -30,9 +30,7 @@ pub async fn run_codex_setup(
     .await?;
 
     let executor_action = if let Some(latest_process) = latest_process {
-        let latest_action = latest_process
-            .executor_action()
-            .map_err(|e| ApiError::Workspace(WorkspaceError::ValidationError(e.to_string())))?;
+        let latest_action = latest_process.executor_action();
         get_setup_helper_action(codex)
             .await?
             .append_action(latest_action.to_owned())

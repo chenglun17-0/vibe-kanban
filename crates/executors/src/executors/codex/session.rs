@@ -180,6 +180,11 @@ impl SessionHandler {
         Ok(codex_dir.join("sessions"))
     }
 
+    /// Root for error reporting when locating a rollout fails.
+    pub(crate) fn sessions_root_for_error() -> PathBuf {
+        Self::sessions_root().unwrap_or_else(|_| PathBuf::from("~/.codex/sessions"))
+    }
+
     fn scan_directory(dir: &Path, session_id: &str) -> Result<PathBuf, SessionError> {
         if !dir.exists() {
             return Err(SessionError::Io(format!(

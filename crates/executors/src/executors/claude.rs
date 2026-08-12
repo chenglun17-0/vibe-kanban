@@ -1,5 +1,6 @@
 // SDK submodules
 pub mod client;
+pub mod history;
 pub mod protocol;
 pub mod slash_commands;
 pub mod types;
@@ -601,7 +602,7 @@ impl ClaudeLogProcessor {
     /// - If content is a string (non-JSON), return Markdown with the raw string.
     /// - If content is an array of { text: string }, join texts as Markdown.
     /// - Otherwise return Json with the original value.
-    fn normalize_claude_tool_result_value(
+    pub(crate) fn normalize_claude_tool_result_value(
         content: &serde_json::Value,
     ) -> (crate::logs::ToolResultValueType, serde_json::Value) {
         if let Some(s) = content.as_str() {
@@ -635,7 +636,7 @@ impl ClaudeLogProcessor {
     }
 
     /// Convert Claude content item to normalized entry
-    fn content_item_to_normalized_entry(
+    pub(crate) fn content_item_to_normalized_entry(
         content_item: &ClaudeContentItem,
         role: &str,
         worktree_path: &str,

@@ -1,4 +1,5 @@
-import { ExecutorAction, PatchType, Workspace } from 'shared/types';
+import { ExecutorAction, PatchType } from 'shared/types';
+import type { WorkspaceWithSession } from '@/types/attempt';
 
 export type PatchTypeWithKey = PatchType & {
   patchKey: string;
@@ -70,12 +71,17 @@ export type ExecutionProcessStaticInfo = {
 export type ExecutionProcessState = {
   executionProcess: ExecutionProcessStaticInfo;
   entries: PatchTypeWithKey[];
+  /**
+   * Entries came from the agent's native session file (already materialized):
+   * skip prompt synthesis and streaming filters when flattening.
+   */
+  native?: boolean;
 };
 
 export type ExecutionProcessStateStore = Record<string, ExecutionProcessState>;
 
 export interface UseConversationHistoryParams {
-  attempt: Workspace;
+  attempt: WorkspaceWithSession;
   onEntriesUpdated: OnEntriesUpdated;
 }
 

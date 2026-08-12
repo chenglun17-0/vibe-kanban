@@ -21,7 +21,7 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, _worktree_path: &Path) {
     // stream closes (push_finished), mirroring other executors.
 }
 
-fn spawn_stdout_normalizer(
+pub(crate) fn spawn_stdout_normalizer(
     msg_store: Arc<MsgStore>,
     entry_index: EntryIndexProvider,
 ) -> tokio::task::JoinHandle<()> {
@@ -358,7 +358,7 @@ fn extract_assistant_text(message: &Value) -> String {
     }
 }
 
-fn display_tool_name(tool_name: &str) -> String {
+pub(crate) fn display_tool_name(tool_name: &str) -> String {
     match tool_name {
         "read" => "Read".to_string(),
         "write" | "edit" => "Edit".to_string(),
@@ -368,7 +368,11 @@ fn display_tool_name(tool_name: &str) -> String {
     }
 }
 
-fn map_action(tool_name: &str, args: Option<Value>, result: Option<Value>) -> ActionType {
+pub(crate) fn map_action(
+    tool_name: &str,
+    args: Option<Value>,
+    result: Option<Value>,
+) -> ActionType {
     let path = args
         .as_ref()
         .and_then(|a| a.get("path"))
@@ -420,7 +424,7 @@ fn map_action(tool_name: &str, args: Option<Value>, result: Option<Value>) -> Ac
     }
 }
 
-fn summarize_value(value: &Value) -> String {
+pub(crate) fn summarize_value(value: &Value) -> String {
     match value {
         Value::String(s) => s.clone(),
         other => serde_json::to_string_pretty(other).unwrap_or_default(),
@@ -429,7 +433,7 @@ fn summarize_value(value: &Value) -> String {
 
 const MAX_DISPLAY_CHARS: usize = 50_000;
 
-fn truncate_for_display(text: &str) -> String {
+pub(crate) fn truncate_for_display(text: &str) -> String {
     if text.chars().count() <= MAX_DISPLAY_CHARS {
         return text.to_string();
     }

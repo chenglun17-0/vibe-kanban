@@ -1,0 +1,10 @@
+{"type":"session_meta","timestamp":"2026-08-12T01:00:00.000Z","payload":{"id":"22222222-3333-4444-5555-666666666666","timestamp":"2026-08-12T01:00:00.000Z","cwd":"/tmp/demo-project","originator":"codex_cli_rs","cli_version":"0.0.0","source":"cli","model_provider":"openai"}}
+{"type":"response_item","timestamp":"2026-08-12T01:00:01.000Z","payload":{"type":"message","role":"system","content":[{"type":"input_text","text":"<instructions>你是代码助手</instructions>"}]}}
+{"type":"response_item","timestamp":"2026-08-12T01:00:02.000Z","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"修复登录 bug"}]}}
+{"type":"response_item","timestamp":"2026-08-12T01:00:03.000Z","payload":{"type":"reasoning","summary":[{"type":"summary_text","text":"先定位登录模块"}]}}
+{"type":"response_item","timestamp":"2026-08-12T01:00:04.000Z","payload":{"type":"function_call","name":"exec_command","arguments":"{\"cmd\":\"ls -la\"}","call_id":"call_1"}}
+{"type":"response_item","timestamp":"2026-08-12T01:00:05.000Z","payload":{"type":"function_call_output","call_id":"call_1","output":"total 42\ndrwxr-xr-x src/"}}
+{"type":"response_item","timestamp":"2026-08-12T01:00:06.000Z","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"已定位并修复。"}]}}
+{"type":"event_msg","timestamp":"2026-08-12T01:00:06.100Z","payload":{"type":"agent_message","message":"已定位并修复。"}}
+{"type":"event_msg","timestamp":"2026-08-12T01:00:06.200Z","payload":{"type":"agent_message_delta","delta":"已"}}
+{"type":"event_msg","timestamp":"2026-08-12T01:00:07.000Z","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":1000,"cached_input_tokens":0,"output_tokens":200,"reasoning_output_tokens":34,"total_tokens":1234},"last_token_usage":{"input_tokens":100,"cached_input_tokens":0,"output_tokens":20,"reasoning_output_tokens":14,"total_tokens":134},"model_context_window":272000},"rate_limits":null}}

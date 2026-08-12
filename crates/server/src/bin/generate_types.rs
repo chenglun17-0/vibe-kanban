@@ -66,6 +66,7 @@ fn generate_types_content() -> String {
         server::routes::repo::InitRepoRequest::decl(),
         server::routes::tags::TagSearchParams::decl(),
         server::routes::config::UserSystemInfo::decl(),
+        server::routes::sessions::conversation_history::NativeHistoryErrorResponse::decl(),
         server::routes::config::Environment::decl(),
         server::routes::config::McpServerQuery::decl(),
         server::routes::config::UpdateMcpServersBody::decl(),
@@ -152,23 +153,14 @@ fn generate_types_content() -> String {
         executors::profile::ExecutorConfigs::decl(),
         executors::executors::BaseAgentCapability::decl(),
         executors::executors::claude::ClaudeCode::decl(),
-        executors::executors::gemini::Gemini::decl(),
-        executors::executors::amp::Amp::decl(),
         executors::executors::codex::Codex::decl(),
         executors::executors::codex::SandboxMode::decl(),
         executors::executors::codex::AskForApproval::decl(),
         executors::executors::codex::ReasoningEffort::decl(),
         executors::executors::codex::ReasoningSummary::decl(),
         executors::executors::codex::ReasoningSummaryFormat::decl(),
-        executors::executors::cursor::CursorAgent::decl(),
-        executors::executors::copilot::Copilot::decl(),
-        executors::executors::opencode::Opencode::decl(),
-        executors::executors::qwen::QwenCode::decl(),
-        executors::executors::droid::Droid::decl(),
         executors::executors::pi::Pi::decl(),
         executors::executors::pi::PiPermissionPolicy::decl(),
-        executors::executors::droid::Autonomy::decl(),
-        executors::executors::droid::ReasoningEffortLevel::decl(),
         executors::executors::AppendPrompt::decl(),
         executors::actions::coding_agent_initial::CodingAgentInitialRequest::decl(),
         executors::actions::coding_agent_follow_up::CodingAgentFollowUpRequest::decl(),
@@ -238,40 +230,12 @@ fn generate_schemas() -> Result<HashMap<&'static str, String>, serde_json::Error
     println!("Generating JSON schemas…");
     let schemas: HashMap<&str, String> = HashMap::from([
         (
-            "amp",
-            generate_json_schema::<executors::executors::amp::Amp>()?,
-        ),
-        (
             "claude_code",
             generate_json_schema::<executors::executors::claude::ClaudeCode>()?,
         ),
         (
-            "gemini",
-            generate_json_schema::<executors::executors::gemini::Gemini>()?,
-        ),
-        (
             "codex",
             generate_json_schema::<executors::executors::codex::Codex>()?,
-        ),
-        (
-            "cursor_agent",
-            generate_json_schema::<executors::executors::cursor::CursorAgent>()?,
-        ),
-        (
-            "opencode",
-            generate_json_schema::<executors::executors::opencode::Opencode>()?,
-        ),
-        (
-            "qwen_code",
-            generate_json_schema::<executors::executors::qwen::QwenCode>()?,
-        ),
-        (
-            "copilot",
-            generate_json_schema::<executors::executors::copilot::Copilot>()?,
-        ),
-        (
-            "droid",
-            generate_json_schema::<executors::executors::droid::Droid>()?,
         ),
         (
             "pi",

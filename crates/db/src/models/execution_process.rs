@@ -6,7 +6,6 @@ use executors::{
     profile::ExecutorProfileId,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use sqlx::{FromRow, SqlitePool, Type};
 use thiserror::Error;
 use ts_rs::TS;
@@ -65,7 +64,7 @@ pub struct ExecutionProcess {
     pub session_id: Uuid,
     pub run_reason: ExecutionProcessRunReason,
     #[ts(type = "ExecutorAction")]
-    pub executor_action: sqlx::types::Json<ExecutorActionField>,
+    pub executor_action: sqlx::types::Json<ExecutorAction>,
     pub status: ExecutionProcessStatus,
     pub exit_code: Option<i64>,
     /// dropped: true if this process is excluded from the current
@@ -113,13 +112,6 @@ pub struct LatestProcessInfo {
     pub completed_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum ExecutorActionField {
-    ExecutorAction(ExecutorAction),
-    Other(Value),
-}
-
 #[derive(Debug, Clone)]
 pub struct MissingBeforeContext {
     pub id: Uuid,
@@ -140,7 +132,7 @@ impl ExecutionProcess {
                     ep.id as "id!: Uuid",
                     ep.session_id as "session_id!: Uuid",
                     ep.run_reason as "run_reason!: ExecutionProcessRunReason",
-                    ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>",
+                    ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorAction>",
                     ep.status as "status!: ExecutionProcessStatus",
                     ep.exit_code,
                     ep.dropped as "dropped!: bool",
@@ -214,7 +206,7 @@ impl ExecutionProcess {
                     ep.id as "id!: Uuid",
                     ep.session_id as "session_id!: Uuid",
                     ep.run_reason as "run_reason!: ExecutionProcessRunReason",
-                    ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>",
+                    ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorAction>",
                     ep.status as "status!: ExecutionProcessStatus",
                     ep.exit_code,
                     ep.dropped as "dropped!: bool",
@@ -241,7 +233,7 @@ impl ExecutionProcess {
                       ep.id              as "id!: Uuid",
                       ep.session_id      as "session_id!: Uuid",
                       ep.run_reason      as "run_reason!: ExecutionProcessRunReason",
-                      ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>",
+                      ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorAction>",
                       ep.status          as "status!: ExecutionProcessStatus",
                       ep.exit_code,
                       ep.dropped as "dropped!: bool",
@@ -268,7 +260,7 @@ impl ExecutionProcess {
                     ep.id as "id!: Uuid",
                     ep.session_id as "session_id!: Uuid",
                     ep.run_reason as "run_reason!: ExecutionProcessRunReason",
-                    ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>",
+                    ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorAction>",
                     ep.status as "status!: ExecutionProcessStatus",
                     ep.exit_code,
                     ep.dropped as "dropped!: bool",
@@ -289,7 +281,7 @@ impl ExecutionProcess {
     ) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             ExecutionProcess,
-            r#"SELECT ep.id as "id!: Uuid", ep.session_id as "session_id!: Uuid", ep.run_reason as "run_reason!: ExecutionProcessRunReason", ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>",
+            r#"SELECT ep.id as "id!: Uuid", ep.session_id as "session_id!: Uuid", ep.run_reason as "run_reason!: ExecutionProcessRunReason", ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorAction>",
                       ep.status as "status!: ExecutionProcessStatus", ep.exit_code,
                       ep.dropped as "dropped!: bool", ep.started_at as "started_at!: DateTime<Utc>", ep.completed_at as "completed_at?: DateTime<Utc>", ep.created_at as "created_at!: DateTime<Utc>", ep.updated_at as "updated_at!: DateTime<Utc>"
                FROM execution_processes ep
@@ -335,7 +327,7 @@ impl ExecutionProcess {
             ep.id as "id!: Uuid",
             ep.session_id as "session_id!: Uuid",
             ep.run_reason as "run_reason!: ExecutionProcessRunReason",
-            ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>",
+            ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorAction>",
             ep.status as "status!: ExecutionProcessStatus",
             ep.exit_code,
             ep.dropped as "dropped!: bool",
@@ -368,7 +360,7 @@ impl ExecutionProcess {
                     ep.id as "id!: Uuid",
                     ep.session_id as "session_id!: Uuid",
                     ep.run_reason as "run_reason!: ExecutionProcessRunReason",
-                    ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>",
+                    ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorAction>",
                     ep.status as "status!: ExecutionProcessStatus",
                     ep.exit_code,
                     ep.dropped as "dropped!: bool",
@@ -398,7 +390,7 @@ impl ExecutionProcess {
                     ep.id as "id!: Uuid",
                     ep.session_id as "session_id!: Uuid",
                     ep.run_reason as "run_reason!: ExecutionProcessRunReason",
-                    ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>",
+                    ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorAction>",
                     ep.status as "status!: ExecutionProcessStatus",
                     ep.exit_code,
                     ep.dropped as "dropped!: bool",
@@ -499,13 +491,8 @@ impl ExecutionProcess {
         Ok(())
     }
 
-    pub fn executor_action(&self) -> Result<&ExecutorAction, anyhow::Error> {
-        match &self.executor_action.0 {
-            ExecutorActionField::ExecutorAction(action) => Ok(action),
-            ExecutorActionField::Other(_) => Err(anyhow::anyhow!(
-                "Executor action is not a valid ExecutorAction JSON object"
-            )),
-        }
+    pub fn executor_action(&self) -> &ExecutorAction {
+        &self.executor_action.0
     }
 
     /// Soft-drop processes at and after the specified boundary (inclusive)
@@ -625,7 +612,7 @@ impl ExecutionProcess {
                     ep.id as "id!: Uuid",
                     ep.session_id as "session_id!: Uuid",
                     ep.run_reason as "run_reason!: ExecutionProcessRunReason",
-                    ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>",
+                    ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorAction>",
                     ep.status as "status!: ExecutionProcessStatus",
                     ep.exit_code,
                     ep.dropped as "dropped!: bool",
@@ -646,9 +633,7 @@ impl ExecutionProcess {
             return Ok(None);
         };
 
-        let action = latest_execution_process
-            .executor_action()
-            .map_err(|e| ExecutionProcessError::ValidationError(e.to_string()))?;
+        let action = latest_execution_process.executor_action();
 
         match &action.typ {
             ExecutorActionType::CodingAgentInitialRequest(request) => {

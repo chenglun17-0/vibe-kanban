@@ -27,6 +27,7 @@ use crate::{
     logs::utils::patch,
 };
 
+pub mod history;
 pub mod normalize_logs;
 pub mod rpc;
 

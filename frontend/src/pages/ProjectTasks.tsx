@@ -14,10 +14,8 @@ import { tasksApi } from '@/lib/api';
 import type { RepoBranchStatus, Workspace } from 'shared/types';
 import { openTaskForm } from '@/lib/openTaskForm';
 import { FeatureShowcaseDialog } from '@/components/dialogs/global/FeatureShowcaseDialog';
-import { BetaWorkspacesDialog } from '@/components/dialogs/global/BetaWorkspacesDialog';
 import { showcases } from '@/config/showcases';
 import { useUserSystem } from '@/components/ConfigProvider';
-import { useWorkspaceCount } from '@/hooks/useWorkspaceCount';
 import { usePostHog } from 'posthog-js/react';
 
 import { useSearch } from '@/contexts/SearchContext';
@@ -224,45 +222,6 @@ export function ProjectTasks() {
     updateAndSaveConfig,
     seenFeatures,
   ]);
-
-  // Beta workspaces invitation - only fetch count if invitation not yet sent
-  const shouldCheckBetaInvitation =
-    isLoaded && !config?.beta_workspaces_invitation_sent;
-  const { data: workspaceCount } = useWorkspaceCount({
-    enabled: shouldCheckBetaInvitation,
-  });
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    if (config?.beta_workspaces_invitation_sent) return;
-    if (workspaceCount === undefined || workspaceCount <= 5) return;
-
-    BetaWorkspacesDialog.show().then((joinBeta) => {
-      BetaWorkspacesDialog.hide();
-      void updateAndSaveConfig({
-        beta_workspaces_invitation_sent: true,
-        beta_workspaces: joinBeta === true,
-      });
-      if (joinBeta === true) {
-        navigate('/workspaces');
-      }
-    });
-  }, [
-    isLoaded,
-    config?.beta_workspaces_invitation_sent,
-    workspaceCount,
-    updateAndSaveConfig,
-    navigate,
-  ]);
-
-  // Redirect beta users from old attempt URLs to the new workspaces UI
-  useEffect(() => {
-    if (!isLoaded) return;
-    if (!config?.beta_workspaces) return;
-    if (!attemptId || attemptId === 'latest') return;
-
-    navigate(`/workspaces/${attemptId}`, { replace: true });
-  }, [isLoaded, config?.beta_workspaces, attemptId, navigate]);
 
   const isLatest = attemptId === 'latest';
   const { data: attempts = [], isLoading: isAttemptsLoading } = useTaskAttempts(
@@ -821,55 +780,55 @@ export function ProjectTasks() {
     <>
       <NewCardHeader
         className="shrink-0"
-      actions={
-        isTaskView ? (
-          <TaskPanelHeaderActions
-            task={selectedTask}
-            onClose={handleClosePanel}
-          />
-        ) : (
-          <AttemptHeaderActions
-            mode={mode}
-            onModeChange={setMode}
-            task={selectedTask}
-            attempt={attempt ?? null}
-            onClose={handleClosePanel}
-          />
-        )
-      }
-    >
-      <div className="mx-auto w-full">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              {isTaskView ? (
-                <BreadcrumbPage>
-                  {truncateTitle(selectedTask?.title)}
-                </BreadcrumbPage>
-              ) : (
-                <BreadcrumbLink
-                  className="cursor-pointer hover:underline"
-                  onClick={() => navigateWithSearch(getTaskPath(taskId!))}
-                >
-                  {truncateTitle(selectedTask?.title)}
-                </BreadcrumbLink>
-              )}
-            </BreadcrumbItem>
-            {!isTaskView && (
-              <>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
+        actions={
+          isTaskView ? (
+            <TaskPanelHeaderActions
+              task={selectedTask}
+              onClose={handleClosePanel}
+            />
+          ) : (
+            <AttemptHeaderActions
+              mode={mode}
+              onModeChange={setMode}
+              task={selectedTask}
+              attempt={attempt ?? null}
+              onClose={handleClosePanel}
+            />
+          )
+        }
+      >
+        <div className="mx-auto w-full">
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                {isTaskView ? (
                   <BreadcrumbPage>
-                    {attempt?.branch || 'Task Attempt'}
+                    {truncateTitle(selectedTask?.title)}
                   </BreadcrumbPage>
-                </BreadcrumbItem>
-              </>
-            )}
-          </BreadcrumbList>
-        </Breadcrumb>
-      </div>
-    </NewCardHeader>
-    <GitErrorBanner />
+                ) : (
+                  <BreadcrumbLink
+                    className="cursor-pointer hover:underline"
+                    onClick={() => navigateWithSearch(getTaskPath(taskId!))}
+                  >
+                    {truncateTitle(selectedTask?.title)}
+                  </BreadcrumbLink>
+                )}
+              </BreadcrumbItem>
+              {!isTaskView && (
+                <>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>
+                      {attempt?.branch || 'Task Attempt'}
+                    </BreadcrumbPage>
+                  </BreadcrumbItem>
+                </>
+              )}
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
+      </NewCardHeader>
+      <GitErrorBanner />
     </>
   ) : null;
 

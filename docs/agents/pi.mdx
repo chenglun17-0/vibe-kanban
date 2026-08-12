@@ -1,0 +1,35 @@
+---
+title: "Pi"
+description: "Set up the Pi coding agent integration"
+icon: https://www.vibekanban.com/images/logos/pi.svg
+---
+
+<Steps>
+<Step title="Install Pi">
+  ```bash
+  npm install -g @earendil-works/pi-coding-agent
+  ```
+
+  Verify the installation with `pi --version`. For more details, see the [Pi documentation](https://github.com/earendil-works/pi-mono).
+</Step>
+
+<Step title="Authenticate">
+  Run `pi` and complete the authentication flow for your model provider as prompted.
+</Step>
+
+<Step title="Start Vibe Kanban">
+  Once authenticated, launch Vibe Kanban:
+
+  ```bash
+  npx vibe-kanban
+  ```
+
+  You can now select Pi when creating task attempts.
+</Step>
+</Steps>
+
+<Note>
+Vibe Kanban reads Pi's native session files (`~/.pi/agent/sessions/`) to display
+completed conversation history. Do not move or delete these files whilst a task
+is under review.
+</Note>

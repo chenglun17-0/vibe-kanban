@@ -1,0 +1,2 @@
+{"type":"user","uuid":"u1","parentUuid":null,"sessionId":"33333333-4444-5555-6666-777777777777","timestamp":"2026-08-12T01:00:01.000Z","cwd":"/tmp/demo-project","isSidechain":false,"isMeta":false,"message":{"role":"user","content":"整理 docs 目录"}}
+{"type":"assistant","uuid":"a1","parentUuid":"u1","sessionId":"33333333-4444-5555-66

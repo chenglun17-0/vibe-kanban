@@ -1,3 +1,4 @@
+pub mod conversation_history;
 pub mod queue;
 pub mod review;
 
@@ -236,6 +237,10 @@ pub async fn follow_up(
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let session_id_router = Router::new()
         .route("/", get(get_session))
+        .route(
+            "/conversation-history",
+            get(conversation_history::get_conversation_history),
+        )
         .route("/follow-up", post(follow_up))
         .route("/review", post(review::start_review))
         .layer(from_fn_with_state(

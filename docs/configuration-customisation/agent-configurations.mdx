@@ -47,9 +47,8 @@ The profiles configuration uses a JSON structure with an `executors` object cont
       "PLAN":    { "CLAUDE_CODE": { "plan": true } },
       "ROUTER":  { "CLAUDE_CODE": { "claude_code_router": true, "dangerously_skip_permissions": true } }
     },
-    "GEMINI": {
-      "DEFAULT": { "GEMINI": { "model": "default", "yolo": true } },
-      "FLASH":   { "GEMINI": { "model": "flash",   "yolo": true } }
+    "PI": {
+      "DEFAULT": { "PI": {} }
     },
     "CODEX": {
       "DEFAULT": { "CODEX": { "sandbox": "danger-full-access" } },
@@ -93,26 +92,6 @@ The profiles configuration uses a JSON structure with an `executors` object cont
   [View full CLI reference →](https://docs.anthropic.com/en/docs/claude-code/cli-reference#cli-flags)
 </Tab>
 
-<Tab title="GEMINI">
-  <ParamField path="model" type="string">
-  Choose model variant: `"default"` or `"flash"`
-  </ParamField>
-
-  <ParamField path="yolo" type="boolean">
-  Run without confirmations
-  </ParamField>
-
-  [View full CLI reference →](https://google-gemini.github.io/gemini-cli/)
-</Tab>
-
-<Tab title="AMP">
-  <ParamField path="dangerously_allow_all" type="boolean">
-  Allow all actions without restrictions (unsafe)
-  </ParamField>
-
-  [View full documentation →](https://ampcode.com/manual#cli)
-</Tab>
-
 <Tab title="CODEX">
   <ParamField path="sandbox" type="string">
   Execution environment: `"read-only"`, `"workspace-write"`, or `"danger-full-access"`
@@ -133,52 +112,16 @@ The profiles configuration uses a JSON structure with an `executors` object cont
   [View full documentation →](https://github.com/openai/codex)
 </Tab>
 
-<Tab title="CURSOR">
-  <ParamField path="force" type="boolean">
-  Force execution without confirmation
-  </ParamField>
-
-  <ParamField path="model" type="string">
-  Specify model to use
-  </ParamField>
-
-  [View full CLI reference →](https://docs.cursor.com/en/cli/reference/parameters)
-</Tab>
-
-<Tab title="OPENCODE">
-  <ParamField path="model" type="string">
-  Specify model to use
-  </ParamField>
-
-  <ParamField path="agent" type="string">
-  Choose agent type
-  </ParamField>
-
-  [View full documentation →](https://opencode.ai/docs/cli/#flags-1)
-</Tab>
-
-<Tab title="QWEN_CODE">
-  <ParamField path="yolo" type="boolean">
-  Run without confirmations
-  </ParamField>
-
-  [View full documentation →](https://qwenlm.github.io/qwen-code-docs/en/cli/index)
-</Tab>
-
-<Tab title="DROID">
-  <ParamField path="autonomy" type="string">
-  Permission level: `"normal"`, `"low"`, `"medium"`, `"high"`, or `"skip-permissions-unsafe"`
-  </ParamField>
-
+<Tab title="PI">
   <ParamField path="model" type="string">
   Specify which model to use
   </ParamField>
 
-  <ParamField path="reasoning_effort" type="string">
-  Reasoning depth: `"off"`, `"low"`, `"medium"`, or `"high"`
+  <ParamField path="permission_policy" type="string">
+  Tool permission policy: `"auto"` or `"supervised"`
   </ParamField>
 
-  [View full documentation →](https://docs.factory.ai/factory-cli/getting-started/overview)
+  [View full documentation →](https://github.com/earendil-works/pi-mono)
 </Tab>
 </Tabs>
 

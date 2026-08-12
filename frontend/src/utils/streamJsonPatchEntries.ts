@@ -39,7 +39,7 @@ export function streamJsonPatchEntries<E = unknown>(
   opts: StreamOptions<E> = {}
 ): StreamController<E> {
   let connected = false;
-  let snapshot: PatchContainer<E> = structuredClone(
+  const snapshot: PatchContainer<E> = structuredClone(
     opts.initial ?? ({ entries: [] } as PatchContainer<E>)
   );
 
@@ -69,11 +69,12 @@ export function streamJsonPatchEntries<E = unknown>(
         const raw = msg.JsonPatch as Operation[];
         const ops = dedupeOps(raw);
 
-        // Apply to a working copy (applyPatch mutates)
-        const next = structuredClone(snapshot);
-        applyUpsertPatch(next, ops);
+        // Apply in place (applyPatch mutates). All patches in this system are
+        // whole-entry ops at /entries/{index}, so entry object identity still
+        // changes exactly when its content changes. Cloning the whole snapshot
+        // per message made loading long histories O(n^2).
+        applyUpsertPatch(snapshot, ops);
 
-        snapshot = next;
         notify();
       }
 
