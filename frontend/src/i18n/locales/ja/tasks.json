@@ -472,6 +472,19 @@
     "title_one": "Todos ({{count}})",
     "title_other": "Todos ({{count}})"
   },
+  "runnablePlans": {
+    "sectionTitle_one": "実行可能な計画 ({{count}})",
+    "sectionTitle_other": "実行可能な計画 ({{count}})",
+    "viewPlan": "計画を表示",
+    "start": "開始",
+    "startExecution": "実行を開始",
+    "startDialog": {
+      "title": "計画の実行を開始",
+      "description": "この計画に紐付くタスクを作成し、すぐに実行を開始します。計画ドキュメントが実装の仕様として使われます。",
+      "starting": "開始中…",
+      "start": "開始"
+    }
+  },
   "todoPopup": {
     "title": "タスク",
     "progress": "{{completed}}/{{total}} 完了",

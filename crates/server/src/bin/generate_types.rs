@@ -1,6 +1,6 @@
 use std::{collections::HashMap, env, fs, path::Path};
 
-use schemars::{generate::SchemaSettings, JsonSchema, Schema, SchemaGenerator};
+use schemars::{JsonSchema, Schema, SchemaGenerator, generate::SchemaSettings};
 use server::routes::task_attempts::pr::DEFAULT_PR_DESCRIPTION_PROMPT;
 use ts_rs::TS;
 
@@ -63,6 +63,7 @@ fn generate_types_content() -> String {
         utils::diff::DiffChangeKind::decl(),
         utils::response::ApiResponse::<()>::decl(),
         server::routes::repo::RegisterRepoRequest::decl(),
+        server::routes::projects::RunnablePlan::decl(),
         server::routes::repo::InitRepoRequest::decl(),
         server::routes::tags::TagSearchParams::decl(),
         server::routes::config::UserSystemInfo::decl(),

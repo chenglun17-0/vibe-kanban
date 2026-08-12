@@ -16,8 +16,8 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
-STATUS_ENUM = {"草案", "进行中", "待核验", "已废弃", "已归档"}
-REQUIRED_META = ["状态", "当前阶段", "最近更新", "关联变更"]
+STATUS_ENUM = {"草案", "待运行", "进行中", "待核验", "已废弃", "已归档"}
+REQUIRED_META = ["状态", "最近更新", "关联变更"]
 REQUIRED_SECTIONS = ["概述", "设计", "计划", "测试", "备注"]  # LeanSpec 五节式
 OVERVIEW_ITEMS = ["非目标", "场景"]
 PROD_ITEMS = ["兼容性", "失败行为", "可观测性", "上线与恢复"]
@@ -160,7 +160,6 @@ def demo() -> None:
     valid = """# 演示计划
 
 - 状态：草案
-- 当前阶段：方案待评审
 - 最近更新：2026-01-01
 - 关联变更：无
 

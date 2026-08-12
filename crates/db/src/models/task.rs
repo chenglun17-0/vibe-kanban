@@ -30,6 +30,8 @@ pub struct Task {
     pub description: Option<String>,
     pub status: TaskStatus,
     pub parent_workspace_id: Option<Uuid>, // Foreign key to parent Workspace
+    // Exec-plan key: "<repo_id>:<repo-relative path>".
+    pub plan_path: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -52,6 +54,7 @@ struct TaskWithAttemptStatusRow {
     description: Option<String>,
     status: TaskStatus,
     parent_workspace_id: Option<Uuid>,
+    plan_path: Option<String>,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
     has_in_progress_attempt: i64,
@@ -86,6 +89,7 @@ pub struct CreateTask {
     pub description: Option<String>,
     pub status: Option<TaskStatus>,
     pub parent_workspace_id: Option<Uuid>,
+    pub plan_path: Option<String>,
     pub image_ids: Option<Vec<Uuid>>,
 }
 
@@ -101,6 +105,7 @@ impl CreateTask {
             description,
             status: Some(TaskStatus::Todo),
             parent_workspace_id: None,
+            plan_path: None,
             image_ids: None,
         }
     }
@@ -140,6 +145,7 @@ impl Task {
   t.description,
   t.status                        AS "status!: TaskStatus",
   t.parent_workspace_id           AS "parent_workspace_id: Uuid",
+  t.plan_path,
   t.created_at                    AS "created_at!: DateTime<Utc>",
   t.updated_at                    AS "updated_at!: DateTime<Utc>",
 
@@ -192,6 +198,7 @@ ORDER BY t.created_at DESC"#,
                     description: rec.description,
                     status: rec.status,
                     parent_workspace_id: rec.parent_workspace_id,
+                    plan_path: rec.plan_path,
                     created_at: rec.created_at,
                     updated_at: rec.updated_at,
                 },
@@ -215,6 +222,7 @@ ORDER BY t.created_at DESC"#,
   t.description,
   t.status,
   t.parent_workspace_id,
+  t.plan_path,
   t.created_at,
   t.updated_at,
 
@@ -265,6 +273,7 @@ ORDER BY t.created_at DESC"#,
                     description: rec.description,
                     status: rec.status,
                     parent_workspace_id: rec.parent_workspace_id,
+                    plan_path: rec.plan_path,
                     created_at: rec.created_at,
                     updated_at: rec.updated_at,
                 },
@@ -280,7 +289,7 @@ ORDER BY t.created_at DESC"#,
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", plan_path, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
                WHERE id = $1"#,
             id
@@ -292,7 +301,7 @@ ORDER BY t.created_at DESC"#,
     pub async fn find_by_rowid(pool: &SqlitePool, rowid: i64) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", plan_path, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
                WHERE rowid = $1"#,
             rowid
@@ -309,15 +318,16 @@ ORDER BY t.created_at DESC"#,
         let status = data.status.clone().unwrap_or_default();
         sqlx::query_as!(
             Task,
-            r#"INSERT INTO tasks (id, project_id, title, description, status, parent_workspace_id)
-               VALUES ($1, $2, $3, $4, $5, $6)
-               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+            r#"INSERT INTO tasks (id, project_id, title, description, status, parent_workspace_id, plan_path)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)
+               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", plan_path, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             task_id,
             data.project_id,
             data.title,
             data.description,
             status,
-            data.parent_workspace_id
+            data.parent_workspace_id,
+            data.plan_path
         )
         .fetch_one(pool)
         .await
@@ -337,7 +347,7 @@ ORDER BY t.created_at DESC"#,
             r#"UPDATE tasks
                SET title = $3, description = $4, status = $5, parent_workspace_id = $6
                WHERE id = $1 AND project_id = $2
-               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
+               RETURNING id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", plan_path, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>""#,
             id,
             project_id,
             title,
@@ -346,6 +356,22 @@ ORDER BY t.created_at DESC"#,
             parent_workspace_id
         )
         .fetch_one(pool)
+        .await
+    }
+
+    /// Plan doc keys ("<repo_id>:<repo-relative path>") already linked to a
+    /// non-cancelled task of this project. Used to filter runnable plans.
+    pub async fn find_taken_plan_paths(
+        pool: &SqlitePool,
+        project_id: Uuid,
+    ) -> Result<Vec<String>, sqlx::Error> {
+        sqlx::query_scalar!(
+            r#"SELECT plan_path AS "plan_path!: String"
+               FROM tasks
+               WHERE project_id = $1 AND plan_path IS NOT NULL AND status != 'cancelled'"#,
+            project_id
+        )
+        .fetch_all(pool)
         .await
     }
 
@@ -415,7 +441,7 @@ ORDER BY t.created_at DESC"#,
         // Find only child tasks that have this workspace as their parent
         sqlx::query_as!(
             Task,
-            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
+            r#"SELECT id as "id!: Uuid", project_id as "project_id!: Uuid", title, description, status as "status!: TaskStatus", parent_workspace_id as "parent_workspace_id: Uuid", plan_path, created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>"
                FROM tasks
                WHERE parent_workspace_id = $1
                ORDER BY created_at DESC"#,

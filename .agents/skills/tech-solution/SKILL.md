@@ -11,7 +11,7 @@ description: Write and review production technical solution documents (技术方
 
 - 本技能负责**技术方案内容**：问题拆解、候选取舍、生产检查、验收设计和质量评审；
   在 `docs/exec-plan/` 下新建方案时同步更新 `docs/exec-plan/README.md` 索引。
-- `docs-maintenance` 从方案**实际开始实施**起，只维护状态、阶段、验证证据、索引、
+- `docs-maintenance` 从方案**实际开始实施**起，只维护状态、验证证据、索引、
   事实回填和归档，不评审候选取舍。实施中技术方向变化时，先由本技能修改方案内容，
   再由 `docs-maintenance` 同步生命周期字段。
 
@@ -90,7 +90,9 @@ description: Write and review production technical solution documents (技术方
 - 超过 500 行须拆分时 → `docs/exec-plan/<业务模块>/<name>/` 子目录：主计划 `<name>.md`
   保留完整骨架并链接子文件；顺序相关的子计划用 `01-xxx.md` 编号（沿用 pi-runtime-refactor 先例），
   纯详情附件用描述性短横线名；README 索引只登记主计划。多份独立计划不套子目录，平铺在模块目录互链。
-- 本技能新建方案统一包含：状态 / 当前阶段 / 最近更新 / 关联变更；初始状态为 `草案`。
+- 本技能新建方案统一包含：状态 / 最近更新 / 关联变更；初始状态为 `草案`。
+- 状态生命周期：`草案`（编写/评审中）→ `待运行`（评审定稿，可被 vibe-kanban 拾取执行）→
+  `进行中`（实施中）→ `待核验` → `已归档` / `已废弃`。实施进度（Phase N）写进正文，不单设头部字段。
 - 计划依赖当前架构事实时，链接 `docs/architecture.md` 或对应专题文档，不复制大段内容。
 - 新规则只用于新建方案和本次实质修改的方案，不批量翻修历史计划。
 - openspec 已废弃：不得把 `openspec/` 当需求或契约真源，`关联变更` 不写 openspec change-id（改写 issue/PR/任务说明）；历史 openspec 证据改指 Git 历史（删除前路径），并显式标注「Git 历史 / 删除前」。
@@ -103,8 +105,7 @@ description: Write and review production technical solution documents (技术方
 ```markdown
 # 标题
 
-- 状态：草案                    # 必填；枚举：草案/进行中/待核验/已废弃/已归档
-- 当前阶段：方案待评审          # 必填；实施后为 Phase N - 阶段名
+- 状态：草案                    # 必填；枚举：草案/待运行/进行中/待核验/已废弃/已归档
 - 最近更新：YYYY-MM-DD          # 必填
 - 关联变更：issue / PR / 任务说明（没有就写“无”）  # 必填
 

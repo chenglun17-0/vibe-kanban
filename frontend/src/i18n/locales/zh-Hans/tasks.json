@@ -261,6 +261,19 @@
     "title_one": "待办事项（{{count}}）",
     "title_other": "待办事项（{{count}}）"
   },
+  "runnablePlans": {
+    "sectionTitle_one": "可运行计划 ({{count}})",
+    "sectionTitle_other": "可运行计划 ({{count}})",
+    "viewPlan": "查看计划",
+    "start": "开始",
+    "startExecution": "开始执行",
+    "startDialog": {
+      "title": "启动计划执行",
+      "description": "将创建关联该计划的任务并立即开始执行，计划文档作为实施依据。",
+      "starting": "正在启动…",
+      "start": "开始执行"
+    }
+  },
   "todoPopup": {
     "title": "任务",
     "progress": "{{completed}}/{{total}} 已完成",

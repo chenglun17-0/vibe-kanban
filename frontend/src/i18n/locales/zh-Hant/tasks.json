@@ -261,6 +261,19 @@
     "title_one": "待辦事項（{{count}}）",
     "title_other": "待辦事項（{{count}}）"
   },
+  "runnablePlans": {
+    "sectionTitle_one": "可執行計畫 ({{count}})",
+    "sectionTitle_other": "可執行計畫 ({{count}})",
+    "viewPlan": "檢視計畫",
+    "start": "開始",
+    "startExecution": "開始執行",
+    "startDialog": {
+      "title": "啟動計畫執行",
+      "description": "將建立關聯此計畫的任務並立即開始執行，計畫文件作為實施依據。",
+      "starting": "正在啟動…",
+      "start": "開始執行"
+    }
+  },
   "todoPopup": {
     "title": "任務",
     "progress": "{{completed}}/{{total}} 已完成",

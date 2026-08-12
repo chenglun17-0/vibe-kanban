@@ -248,6 +248,19 @@
     "title_one": "Todos ({{count}})",
     "title_other": "Todos ({{count}})"
   },
+  "runnablePlans": {
+    "sectionTitle_one": "Runnable plans ({{count}})",
+    "sectionTitle_other": "Runnable plans ({{count}})",
+    "viewPlan": "View plan",
+    "start": "Start",
+    "startExecution": "Start execution",
+    "startDialog": {
+      "title": "Start plan execution",
+      "description": "Create a task linked to this plan and start execution immediately. The plan document is the implementation spec.",
+      "starting": "Starting…",
+      "start": "Start"
+    }
+  },
   "todoPopup": {
     "title": "Tasks",
     "progress": "{{completed}}/{{total}} completed",

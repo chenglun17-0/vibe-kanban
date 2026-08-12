@@ -188,6 +188,7 @@ const TaskFormDialogImpl = NiceModal.create<TaskFormDialogProps>((props) => {
         status: null,
         parent_workspace_id:
           mode === 'subtask' ? props.parentTaskAttemptId : null,
+        plan_path: null,
         image_ids: imageIds,
         shared_task_id: null,
       };

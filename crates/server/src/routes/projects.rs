@@ -15,11 +15,14 @@ use axum::{
 use db::models::{
     project::{CreateProject, Project, ProjectError, SearchResult, UpdateProject},
     project_repo::{CreateProjectRepo, ProjectRepo},
-    repo::Repo,
+    repo::{Repo, RepoError},
+    task::Task,
 };
 use deployment::Deployment;
 use futures_util::{SinkExt, StreamExt, TryStreamExt};
-use services::services::{file_search::SearchQuery, project::ProjectServiceError};
+use serde::{Deserialize, Serialize};
+use services::services::{exec_plans, file_search::SearchQuery, project::ProjectServiceError};
+use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
@@ -433,6 +436,76 @@ pub async fn get_project_repository(
     }
 }
 
+#[derive(Debug, Serialize, TS)]
+pub struct RunnablePlan {
+    pub repo_id: Uuid,
+    pub repo_name: String,
+    // Repo-relative path, e.g. "docs/exec-plan/agents/foo.md".
+    pub path: String,
+    pub title: String,
+    pub updated: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PlanContentQuery {
+    pub repo_id: Uuid,
+    pub path: String,
+}
+
+/// List tech-solution plan docs marked 待运行 that are not yet linked to a
+/// non-cancelled task. Surfaced in the kanban To Do column.
+pub async fn list_runnable_plans(
+    Extension(project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<RunnablePlan>>>, ApiError> {
+    let pool = &deployment.db().pool;
+    let repos = deployment
+        .project()
+        .get_repositories(pool, project.id)
+        .await?;
+    let taken: std::collections::HashSet<String> = Task::find_taken_plan_paths(pool, project.id)
+        .await?
+        .into_iter()
+        .collect();
+
+    let mut plans = Vec::new();
+    for repo in repos {
+        for doc in exec_plans::scan_plans(&repo.path, exec_plans::RUNNABLE_STATUS) {
+            if taken.contains(&format!("{}:{}", repo.id, doc.path)) {
+                continue;
+            }
+            plans.push(RunnablePlan {
+                repo_id: repo.id,
+                repo_name: repo.display_name.clone(),
+                path: doc.path,
+                title: doc.title,
+                updated: doc.updated,
+            });
+        }
+    }
+    plans.sort_by(|a, b| a.title.cmp(&b.title).then_with(|| a.path.cmp(&b.path)));
+    Ok(ResponseJson(ApiResponse::success(plans)))
+}
+
+/// Read one plan doc's markdown. The path is validated to stay inside the
+/// repository's docs/exec-plan directory.
+pub async fn get_plan_content(
+    Extension(project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+    Query(query): Query<PlanContentQuery>,
+) -> Result<ResponseJson<ApiResponse<String>>, ApiError> {
+    let pool = &deployment.db().pool;
+    ProjectRepo::find_by_project_and_repo(pool, project.id, query.repo_id)
+        .await?
+        .ok_or_else(|| ApiError::BadRequest("Repository not found in project".to_string()))?;
+    let repo = Repo::find_by_id(pool, query.repo_id)
+        .await?
+        .ok_or(RepoError::NotFound)?;
+    let content = exec_plans::read_plan(&repo.path, &query.path)
+        .map_err(|e| ApiError::BadRequest(e.to_string()))?;
+    Ok(ResponseJson(ApiResponse::success(content)))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let project_id_router = Router::new()
         .route(
@@ -441,6 +514,8 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         )
         .route("/search", get(search_project_files))
         .route("/open-editor", post(open_project_in_editor))
+        .route("/runnable-plans", get(list_runnable_plans))
+        .route("/runnable-plans/content", get(get_plan_content))
         .route(
             "/repositories",
             get(get_project_repositories).post(add_project_repository),

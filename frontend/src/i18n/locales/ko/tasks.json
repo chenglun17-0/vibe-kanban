@@ -472,6 +472,19 @@
     "title_one": "Todos ({{count}})",
     "title_other": "Todos ({{count}})"
   },
+  "runnablePlans": {
+    "sectionTitle_one": "실행 가능한 계획 ({{count}})",
+    "sectionTitle_other": "실행 가능한 계획 ({{count}})",
+    "viewPlan": "계획 보기",
+    "start": "시작",
+    "startExecution": "실행 시작",
+    "startDialog": {
+      "title": "계획 실행 시작",
+      "description": "이 계획에 연결된 작업을 만들고 즉시 실행을 시작합니다. 계획 문서가 구현 명세로 사용됩니다.",
+      "starting": "시작 중…",
+      "start": "시작"
+    }
+  },
   "todoPopup": {
     "title": "작업",
     "progress": "{{completed}}/{{total}} 완료",

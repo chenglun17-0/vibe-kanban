@@ -18,6 +18,7 @@ import {
   GitBranch,
   Project,
   Repo,
+  RunnablePlan,
   RepoWithTargetBranch,
   CreateProject,
   CreateProjectRepo,
@@ -346,6 +347,28 @@ export const tasksApi = {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
+  },
+};
+
+// Runnable exec-plan APIs (tech-solution docs marked 待运行)
+export const plansApi = {
+  listRunnable: async (projectId: string): Promise<RunnablePlan[]> => {
+    const response = await makeRequest(
+      `/api/projects/${projectId}/runnable-plans`
+    );
+    return handleApiResponse<RunnablePlan[]>(response);
+  },
+
+  getContent: async (
+    projectId: string,
+    repoId: string,
+    path: string
+  ): Promise<string> => {
+    const params = new URLSearchParams({ repo_id: repoId, path });
+    const response = await makeRequest(
+      `/api/projects/${projectId}/runnable-plans/content?${params}`
+    );
+    return handleApiResponse<string>(response);
   },
 };
 
