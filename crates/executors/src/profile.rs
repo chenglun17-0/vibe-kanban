@@ -482,4 +482,3 @@ pub fn to_default_variant(id: &ExecutorProfileId) -> ExecutorProfileId {
         variant: None,
     }
 }
-

@@ -708,8 +708,7 @@ mod tests {
         let handle = spawn_stdout_normalizer(store.clone(), entry_index);
         let _ = handle.await;
 
-        let mut by_index: std::collections::BTreeMap<usize, NormalizedEntry> =
-            Default::default();
+        let mut by_index: std::collections::BTreeMap<usize, NormalizedEntry> = Default::default();
         for msg in store.get_history() {
             if let LogMsg::JsonPatch(patch) = msg
                 && let Some((index, entry)) = extract_normalized_entry_from_patch(&patch)

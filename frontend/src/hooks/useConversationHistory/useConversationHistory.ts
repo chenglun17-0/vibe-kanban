@@ -20,10 +20,7 @@ import type {
   UseConversationHistoryParams,
   UseConversationHistoryResult,
 } from './types';
-import {
-  makeLoadingPatch,
-  nextActionPatch,
-} from './constants';
+import { makeLoadingPatch, nextActionPatch } from './constants';
 
 export type {
   AddEntryType,
@@ -34,10 +31,7 @@ export type {
   AggregatedDiffGroup,
 } from './types';
 
-export {
-  isAggregatedGroup,
-  isAggregatedDiffGroup,
-} from './types';
+export { isAggregatedGroup, isAggregatedDiffGroup } from './types';
 
 /** Pseudo state key holding the native (materialized) session history block. */
 const NATIVE_STATE_KEY = 'native';

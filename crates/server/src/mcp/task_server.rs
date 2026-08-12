@@ -275,9 +275,7 @@ pub struct McpWorkspaceRepoInput {
 pub struct StartWorkspaceSessionRequest {
     #[schemars(description = "The ID of the task to start")]
     pub task_id: Uuid,
-    #[schemars(
-        description = "The coding agent executor to run ('CLAUDE_CODE', 'CODEX', 'PI')"
-    )]
+    #[schemars(description = "The coding agent executor to run ('CLAUDE_CODE', 'CODEX', 'PI')")]
     pub executor: String,
     #[schemars(description = "Optional executor variant, if needed")]
     pub variant: Option<String>,

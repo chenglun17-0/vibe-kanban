@@ -1,7 +1,8 @@
 use axum::{
     Extension,
+    extract::State,
     http::StatusCode,
-    response::{IntoResponse, Json, Response},
+    response::{IntoResponse, Json, Json as ResponseJson, Response},
 };
 use db::models::session::Session;
 use deployment::Deployment;
@@ -10,7 +11,6 @@ use serde::Serialize;
 use services::services::native_history;
 use ts_rs::TS;
 use utils::response::ApiResponse;
-use axum::{extract::State, response::Json as ResponseJson};
 
 use crate::DeploymentImpl;
 
@@ -51,10 +51,9 @@ pub async fn get_conversation_history(
     Extension(session): Extension<Session>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Vec<PatchType>>>, NativeHistoryApiError> {
-    let entries =
-        native_history::get_conversation_history(&deployment.db().pool, session.id)
-            .await
-            .map_err(NativeHistoryApiError)?;
+    let entries = native_history::get_conversation_history(&deployment.db().pool, session.id)
+        .await
+        .map_err(NativeHistoryApiError)?;
     Ok(ResponseJson(ApiResponse::success(entries)))
 }
 
@@ -65,8 +64,8 @@ mod tests {
     /// The frontend keys its error UI off these strings; keep them stable.
     #[test]
     fn native_history_error_response_carries_code_and_retryable() {
-        let response = NativeHistoryApiError(NativeHistoryError::NotFlushed("s-1".into()))
-            .into_response();
+        let response =
+            NativeHistoryApiError(NativeHistoryError::NotFlushed("s-1".into())).into_response();
         assert_eq!(response.status(), StatusCode::CONFLICT);
 
         let response = NativeHistoryApiError(NativeHistoryError::FormatUnsupported(

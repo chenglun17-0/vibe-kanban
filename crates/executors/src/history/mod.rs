@@ -159,12 +159,12 @@ pub trait NativeSessionHistoryProvider: Send + Sync + std::fmt::Debug {
 pub fn native_history_provider(agent: BaseCodingAgent) -> Box<dyn NativeSessionHistoryProvider> {
     match agent {
         BaseCodingAgent::Pi => Box::new(crate::executors::pi::history::PiNativeSessionHistory),
-        BaseCodingAgent::Codex => Box::new(
-            crate::executors::codex::history::CodexNativeSessionHistory,
-        ),
-        BaseCodingAgent::ClaudeCode => Box::new(
-            crate::executors::claude::history::ClaudeNativeSessionHistory,
-        ),
+        BaseCodingAgent::Codex => {
+            Box::new(crate::executors::codex::history::CodexNativeSessionHistory)
+        }
+        BaseCodingAgent::ClaudeCode => {
+            Box::new(crate::executors::claude::history::ClaudeNativeSessionHistory)
+        }
     }
 }
 
@@ -263,5 +263,4 @@ mod tests {
         let _ = std::fs::remove_file(&path);
         assert_ne!(before, after);
     }
-
 }

@@ -15,19 +15,17 @@ use std::{
 use chrono::{DateTime, Utc};
 use db::models::{
     coding_agent_turn::CodingAgentTurn,
-    execution_process::{
-        ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus,
-    },
+    execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
     execution_process_logs::ExecutionProcessLogs,
     session::Session,
     workspace::Workspace,
 };
+/// executors::logs::utils::patch::PatchType is the frontend's entry wrapper.
+use executors::logs::utils::patch::PatchType;
 use executors::{
     actions::{ExecutorAction, ExecutorActionType},
     executors::BaseCodingAgent,
-    history::{
-        FileFingerprint, NativeHistoryError, TailPolicy, native_history_provider,
-    },
+    history::{FileFingerprint, NativeHistoryError, TailPolicy, native_history_provider},
     logs::{
         ActionType, CommandExitStatus, CommandRunResult, NormalizedEntry, NormalizedEntryType,
         ToolStatus,
@@ -36,9 +34,6 @@ use executors::{
 use sqlx::SqlitePool;
 use utils::log_msg::LogMsg;
 use uuid::Uuid;
-
-/// executors::logs::utils::patch::PatchType is the frontend's entry wrapper.
-use executors::logs::utils::patch::PatchType;
 
 /// Cache native reads by file fingerprint; scripts are rebuilt per call
 /// (cheap) and never cached.
@@ -171,12 +166,11 @@ async fn build_script_entries(
     if records.is_empty() {
         return Ok(vec![]);
     }
-    let messages = ExecutionProcessLogs::parse_logs(&records).map_err(|e| {
-        NativeHistoryError::Corrupt {
+    let messages =
+        ExecutionProcessLogs::parse_logs(&records).map_err(|e| NativeHistoryError::Corrupt {
             path: std::path::PathBuf::from("<db>"),
             reason: format!("failed to parse script logs: {e}"),
-        }
-    })?;
+        })?;
     let output = messages
         .iter()
         .filter_map(|msg| match msg {
