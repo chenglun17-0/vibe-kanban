@@ -818,8 +818,9 @@ export function ProjectTasks() {
     );
 
   const rightHeader = selectedTask ? (
-    <NewCardHeader
-      className="shrink-0"
+    <>
+      <NewCardHeader
+        className="shrink-0"
       actions={
         isTaskView ? (
           <TaskPanelHeaderActions
@@ -868,6 +869,8 @@ export function ProjectTasks() {
         </Breadcrumb>
       </div>
     </NewCardHeader>
+    <GitErrorBanner />
+    </>
   ) : null;
 
   const attemptContent = selectedTask ? (
@@ -878,7 +881,6 @@ export function ProjectTasks() {
         <TaskAttemptPanel attempt={attempt} task={selectedTask}>
           {({ logs, followUp }) => (
             <>
-              <GitErrorBanner />
               <div className="flex-1 min-h-0 flex flex-col">
                 <div className="flex-1 min-h-0 flex flex-col">{logs}</div>
 
