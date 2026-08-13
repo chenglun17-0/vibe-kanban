@@ -509,6 +509,7 @@
     "selectBaseBranch": "選擇基底分支",
     "draftLabel": "建立為草稿",
     "autoGenerateLabel": "請求 AI 代理產生更好的 PR 描述",
+    "generating": "正在產生 PR 描述...",
     "creating": "建立中...",
     "createButton": "建立 PR",
     "errors": {
@@ -520,7 +521,10 @@
       "giteeCliNotLoggedIn": "Gitee CLI（ge）尚未驗證。請設定 GITEE_TOKEN，或執行「ge auth login」後再試。",
       "gitCliNotLoggedIn": "Git 尚未驗證。請執行 gh auth login（或設定 Git 憑證）後重試。",
       "gitCliNotInstalled": "未安裝 Git CLI。請安裝 Git 以建立 PR。",
-      "targetBranchNotFound": "遠端不存在目標分支 {{branch}}。建立 PR 前請確認該分支存在。"
+      "targetBranchNotFound": "遠端不存在目標分支 {{branch}}。建立 PR 前請確認該分支存在。",
+      "generationFailed": "AI 代理無法產生 PR 描述。",
+      "generationTimedOut": "產生 PR 描述逾時，請重試。",
+      "sourceBranchChanged": "產生描述期間來源分支已變更，請重新產生後再建立 PR。"
     },
     "loginRequired": {
       "title": "登入以建立 PR",

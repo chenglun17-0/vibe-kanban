@@ -577,6 +577,7 @@
     "selectBaseBranch": "Select base branch",
     "draftLabel": "Create as draft",
     "autoGenerateLabel": "Auto-generate PR description with AI",
+    "generating": "Generating PR description...",
     "creating": "Creating...",
     "createButton": "Create PR",
     "errors": {
@@ -588,7 +589,10 @@
       "giteeCliNotLoggedIn": "Gitee CLI (ge) is not authenticated. Set GITEE_TOKEN or run \"ge auth login\" and try again.",
       "gitCliNotLoggedIn": "Git is not authenticated. Run \"gh auth login\" (or configure Git credentials) and try again.",
       "gitCliNotInstalled": "Git CLI is not installed. Install Git to create a PR.",
-      "targetBranchNotFound": "Target branch '{{branch}}' does not exist on remote. Please ensure the branch exists before creating a pull request."
+      "targetBranchNotFound": "Target branch '{{branch}}' does not exist on remote. Please ensure the branch exists before creating a pull request.",
+      "generationFailed": "The AI agent failed to generate a PR description.",
+      "generationTimedOut": "PR description generation timed out. Please try again.",
+      "sourceBranchChanged": "The source branch changed while the description was generated. Generate it again before creating the PR."
     },
     "loginRequired": {
       "title": "Sign in to create a pull request",

@@ -390,6 +390,23 @@ ORDER BY t.created_at DESC"#,
         Ok(())
     }
 
+    pub async fn update_status_if_current(
+        pool: &SqlitePool,
+        id: Uuid,
+        current_status: TaskStatus,
+        status: TaskStatus,
+    ) -> Result<bool, sqlx::Error> {
+        let result = sqlx::query(
+            "UPDATE tasks SET status = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND status = $2",
+        )
+        .bind(id)
+        .bind(current_status)
+        .bind(status)
+        .execute(pool)
+        .await?;
+        Ok(result.rows_affected() == 1)
+    }
+
     /// Update the parent_workspace_id field for a task
     pub async fn update_parent_workspace_id(
         pool: &SqlitePool,
@@ -524,6 +541,32 @@ mod tests {
                 .iter()
                 .any(|task| task.project_id == second_project_id)
         );
+        Ok(())
+    }
+
+    #[sqlx::test(migrations = "./migrations")]
+    async fn conditional_status_update_preserves_done(pool: SqlitePool) -> Result<(), sqlx::Error> {
+        let project_id = Uuid::new_v4();
+        sqlx::query("INSERT INTO projects (id, name) VALUES ($1, 'Project')")
+            .bind(project_id)
+            .execute(&pool)
+            .await?;
+        let task_id = Uuid::new_v4();
+        let task = CreateTask::from_title_description(project_id, "Task".to_string(), None);
+        Task::create(&pool, &task, task_id).await?;
+        Task::update_status(&pool, task_id, TaskStatus::Done).await?;
+
+        let updated = Task::update_status_if_current(
+            &pool,
+            task_id,
+            TaskStatus::InProgress,
+            TaskStatus::InReview,
+        )
+        .await?;
+        let task = Task::find_by_id(&pool, task_id).await?.unwrap();
+
+        assert!(!updated);
+        assert_eq!(task.status, TaskStatus::Done);
         Ok(())
     }
 }

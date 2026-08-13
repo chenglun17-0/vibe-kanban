@@ -169,6 +169,45 @@ impl Merge {
         .map(Into::into)
     }
 
+    /// Repair task/workspace state after a merged PR was recorded but a later process
+    /// overwrote the task status before shutdown.
+    pub async fn reconcile_merged_pr_tasks(pool: &SqlitePool) -> Result<u64, sqlx::Error> {
+        let mut transaction = pool.begin().await?;
+        let updated_tasks = sqlx::query(
+            r#"UPDATE tasks
+               SET status = 'done', updated_at = CURRENT_TIMESTAMP
+             WHERE status != 'done'
+               AND EXISTS (
+                   SELECT 1
+                     FROM workspaces w
+                     JOIN merges m ON m.workspace_id = w.id
+                    WHERE w.task_id = tasks.id
+                      AND m.merge_type = 'pr'
+                      AND m.pr_status = 'merged'
+               )"#,
+        )
+        .execute(&mut *transaction)
+        .await?
+        .rows_affected();
+        sqlx::query(
+            r#"UPDATE workspaces
+               SET archived = 1, updated_at = CURRENT_TIMESTAMP
+             WHERE pinned = 0
+               AND archived = 0
+               AND EXISTS (
+                   SELECT 1
+                     FROM merges m
+                    WHERE m.workspace_id = workspaces.id
+                      AND m.merge_type = 'pr'
+                      AND m.pr_status = 'merged'
+               )"#,
+        )
+        .execute(&mut *transaction)
+        .await?;
+        transaction.commit().await?;
+        Ok(updated_tasks)
+    }
+
     /// Get all open PRs for monitoring
     pub async fn get_open_prs(pool: &SqlitePool) -> Result<Vec<PrMerge>, sqlx::Error> {
         let rows = sqlx::query_as!(
@@ -363,6 +402,74 @@ impl From<MergeRow> for PrMerge {
             },
             created_at: row.created_at,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[sqlx::test(migrations = "./migrations")]
+    async fn reconciles_tasks_with_merged_prs(pool: SqlitePool) -> Result<(), sqlx::Error> {
+        let project_id = Uuid::new_v4();
+        let task_id = Uuid::new_v4();
+        let workspace_id = Uuid::new_v4();
+        let repo_id = Uuid::new_v4();
+        sqlx::query("INSERT INTO projects (id, name) VALUES ($1, 'Project')")
+            .bind(project_id)
+            .execute(&pool)
+            .await?;
+        sqlx::query(
+            "INSERT INTO tasks (id, project_id, title, status) VALUES ($1, $2, 'Task', 'inreview')",
+        )
+        .bind(task_id)
+        .bind(project_id)
+        .execute(&pool)
+        .await?;
+        sqlx::query("INSERT INTO workspaces (id, task_id, branch) VALUES ($1, $2, 'feature')")
+            .bind(workspace_id)
+            .bind(task_id)
+            .execute(&pool)
+            .await?;
+        sqlx::query(
+            "INSERT INTO repos (id, path, name, display_name) VALUES ($1, '/tmp/repo', 'repo', 'Repo')",
+        )
+        .bind(repo_id)
+        .execute(&pool)
+        .await?;
+        Merge::create_pr(
+            &pool,
+            workspace_id,
+            repo_id,
+            "main",
+            42,
+            "https://example.com/pulls/42",
+        )
+        .await?;
+        let merge_id = match Merge::find_by_workspace_id(&pool, workspace_id)
+            .await?
+            .into_iter()
+            .next()
+            .unwrap()
+        {
+            Merge::Pr(pr) => pr.id,
+            Merge::Direct(_) => unreachable!("created a PR merge"),
+        };
+        Merge::update_status(&pool, merge_id, MergeStatus::Merged, None).await?;
+
+        assert_eq!(Merge::reconcile_merged_pr_tasks(&pool).await?, 1);
+        let task_status: String = sqlx::query_scalar("SELECT status FROM tasks WHERE id = $1")
+            .bind(task_id)
+            .fetch_one(&pool)
+            .await?;
+        let archived: bool = sqlx::query_scalar("SELECT archived FROM workspaces WHERE id = $1")
+            .bind(workspace_id)
+            .fetch_one(&pool)
+            .await?;
+
+        assert_eq!(task_status, "done");
+        assert!(archived);
+        Ok(())
     }
 }
 

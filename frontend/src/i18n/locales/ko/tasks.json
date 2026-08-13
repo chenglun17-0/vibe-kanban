@@ -116,6 +116,7 @@
     "selectBaseBranch": "기본 브랜치 선택",
     "draftLabel": "초안으로 만들기",
     "autoGenerateLabel": "AI 에이전트에게 더 나은 PR 설명 생성 요청",
+    "generating": "PR 설명 생성 중...",
     "creating": "생성 중...",
     "createButton": "PR 생성",
     "errors": {
@@ -127,7 +128,10 @@
       "giteeCliNotLoggedIn": "Gitee CLI(ge)가 인증되지 않았습니다. GITEE_TOKEN을 설정하거나 \"ge auth login\"을 실행하세요.",
       "gitCliNotLoggedIn": "Git이 인증되지 않았습니다. \"gh auth login\"을 실행하거나 Git 자격 증명을 설정한 후 다시 시도하세요.",
       "gitCliNotInstalled": "Git CLI가 설치되어 있지 않습니다. PR을 생성하려면 Git을 설치하세요.",
-      "targetBranchNotFound": "대상 브랜치 '{{branch}}'이(가) 원격에 존재하지 않습니다. 풀 리퀘스트를 생성하기 전에 브랜치가 존재하는지 확인하세요."
+      "targetBranchNotFound": "대상 브랜치 '{{branch}}'이(가) 원격에 존재하지 않습니다. 풀 리퀘스트를 생성하기 전에 브랜치가 존재하는지 확인하세요.",
+      "generationFailed": "AI 에이전트가 PR 설명을 생성하지 못했습니다.",
+      "generationTimedOut": "PR 설명 생성 시간이 초과되었습니다. 다시 시도하세요.",
+      "sourceBranchChanged": "설명을 생성하는 동안 소스 브랜치가 변경되었습니다. PR을 만들기 전에 다시 생성하세요."
     },
     "loginRequired": {
       "title": "Pull Request를 만들려면 로그인하세요",

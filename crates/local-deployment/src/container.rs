@@ -488,7 +488,9 @@ impl LocalContainerService {
                     ExecutionProcessStatus::Running
                 );
 
-                if success || cleanup_done {
+                if (success || cleanup_done)
+                    && ctx.execution_process.executor_action().affects_task_status
+                {
                     // Commit changes (if any) and get feedback about whether changes were made
                     let changes_committed = match container.try_commit_changes(&ctx).await {
                         Ok(committed) => committed,
@@ -585,6 +587,7 @@ impl LocalContainerService {
 
                 // Fire analytics event when CodingAgent execution has finished
                 if config.read().await.analytics_enabled
+                    && ctx.execution_process.executor_action().affects_task_status
                     && matches!(
                         &ctx.execution_process.run_reason,
                         ExecutionProcessRunReason::CodingAgent
@@ -714,7 +717,7 @@ impl LocalContainerService {
                 {
                     let content = entry.content.trim();
                     if !content.is_empty() {
-                        const MAX_SUMMARY_LENGTH: usize = 4096;
+                        const MAX_SUMMARY_LENGTH: usize = 64 * 1024;
                         if content.len() > MAX_SUMMARY_LENGTH {
                             let truncated = truncate_to_char_boundary(content, MAX_SUMMARY_LENGTH);
                             return Some(format!("{truncated}..."));
@@ -1252,12 +1255,18 @@ impl ContainerService for LocalContainerService {
 
         // Update task status to InReview when execution is stopped
         if let Ok(ctx) = ExecutionProcess::load_context(&self.db.pool, execution_process.id).await
+            && ctx.execution_process.executor_action().affects_task_status
             && !matches!(
                 ctx.execution_process.run_reason,
                 ExecutionProcessRunReason::DevServer
             )
-            && let Err(e) =
-                Task::update_status(&self.db.pool, ctx.task.id, TaskStatus::InReview).await
+            && let Err(e) = Task::update_status_if_current(
+                &self.db.pool,
+                ctx.task.id,
+                TaskStatus::InProgress,
+                TaskStatus::InReview,
+            )
+            .await
         {
             tracing::error!("Failed to update task status to InReview: {e}");
         }

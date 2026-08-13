@@ -170,7 +170,9 @@ pub trait ContainerService {
                     ExecutionProcess::find_by_session_id(&self.db().pool, session.id, false).await
                 {
                     for process in processes {
-                        if process.status == ExecutionProcessStatus::Running {
+                        if process.executor_action().affects_task_status
+                            && process.status == ExecutionProcessStatus::Running
+                        {
                             return Ok(true);
                         }
                     }
@@ -187,6 +189,11 @@ pub trait ContainerService {
     /// - Never when a setup script has no next_action (parallel mode)
     /// - The next action is None (no follow-up actions)
     fn should_finalize(&self, ctx: &ExecutionContext) -> bool {
+        let action = ctx.execution_process.executor_action();
+        if !action.affects_task_status {
+            return false;
+        }
+
         // Never finalize DevServer processes
         if matches!(
             ctx.execution_process.run_reason,
@@ -198,7 +205,6 @@ pub trait ContainerService {
         // Never finalize setup scripts without a next_action (parallel mode).
         // In sequential mode, setup scripts have next_action pointing to coding agent,
         // so they won't finalize anyway (handled by next_action.is_none() check below).
-        let action = ctx.execution_process.executor_action();
         if matches!(
             ctx.execution_process.run_reason,
             ExecutionProcessRunReason::SetupScript
@@ -221,8 +227,13 @@ pub trait ContainerService {
 
     /// Finalize task execution by updating status to InReview and sending notifications
     async fn finalize_task(&self, ctx: &ExecutionContext) {
-        if let Err(e) =
-            Task::update_status(&self.db().pool, ctx.task.id, TaskStatus::InReview).await
+        if let Err(e) = Task::update_status_if_current(
+            &self.db().pool,
+            ctx.task.id,
+            TaskStatus::InProgress,
+            TaskStatus::InReview,
+        )
+        .await
         {
             tracing::error!("Failed to update task status to InReview: {e}");
         }
@@ -306,18 +317,25 @@ pub trait ContainerService {
             // Process marked as failed
             tracing::info!("Marked orphaned execution process {} as failed", process.id);
             // Update task status to InReview for coding agent and setup script failures
-            if matches!(
-                process.run_reason,
-                ExecutionProcessRunReason::CodingAgent
-                    | ExecutionProcessRunReason::SetupScript
-                    | ExecutionProcessRunReason::CleanupScript
-            ) && let Ok(Some(session)) =
-                Session::find_by_id(&self.db().pool, process.session_id).await
+            if process.executor_action().affects_task_status
+                && matches!(
+                    process.run_reason,
+                    ExecutionProcessRunReason::CodingAgent
+                        | ExecutionProcessRunReason::SetupScript
+                        | ExecutionProcessRunReason::CleanupScript
+                )
+                && let Ok(Some(session)) =
+                    Session::find_by_id(&self.db().pool, process.session_id).await
                 && let Ok(Some(workspace)) =
                     Workspace::find_by_id(&self.db().pool, session.workspace_id).await
                 && let Ok(Some(task)) = workspace.parent_task(&self.db().pool).await
-                && let Err(e) =
-                    Task::update_status(&self.db().pool, task.id, TaskStatus::InReview).await
+                && let Err(e) = Task::update_status_if_current(
+                    &self.db().pool,
+                    task.id,
+                    TaskStatus::InProgress,
+                    TaskStatus::InReview,
+                )
+                .await
             {
                 tracing::error!(
                     "Failed to update task status to InReview for orphaned session: {}",
@@ -867,7 +885,8 @@ pub trait ContainerService {
             .parent_task(&self.db().pool)
             .await?
             .ok_or(SqlxError::RowNotFound)?;
-        if task.status != TaskStatus::InProgress
+        if executor_action.affects_task_status
+            && task.status != TaskStatus::InProgress
             && run_reason != &ExecutionProcessRunReason::DevServer
         {
             Task::update_status(&self.db().pool, task.id, TaskStatus::InProgress).await?;
@@ -913,7 +932,9 @@ pub trait ContainerService {
         )
         .await?;
 
-        Workspace::set_archived(&self.db().pool, workspace.id, false).await?;
+        if executor_action.affects_task_status {
+            Workspace::set_archived(&self.db().pool, workspace.id, false).await?;
+        }
 
         if let Some(prompt) = match executor_action.typ() {
             ExecutorActionType::CodingAgentInitialRequest(coding_agent_request) => {
@@ -961,7 +982,9 @@ pub trait ContainerService {
                     update_error
                 );
             }
-            Task::update_status(&self.db().pool, task.id, TaskStatus::InReview).await?;
+            if executor_action.affects_task_status {
+                Task::update_status(&self.db().pool, task.id, TaskStatus::InReview).await?;
+            }
 
             // Emit stderr error message
             let log_message = LogMsg::Stderr(format!("Failed to start execution: {start_error}"));

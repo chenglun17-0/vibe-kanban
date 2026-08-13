@@ -178,7 +178,13 @@ export type OpenEditorResponse = { url: string | null, };
 
 export type CreateAndStartTaskRequest = { task: CreateTask, executor_profile_id: ExecutorProfileId, repos: Array<WorkspaceRepoInput>, };
 
-export type CreatePrApiRequest = { title: string, body: string | null, target_branch: string | null, draft: boolean | null, repo_id: string, auto_generate_description: boolean, };
+export type CreatePrApiRequest = { title: string, body: string | null, target_branch: string | null, draft: boolean | null, repo_id: string, source_head_sha: string | null, };
+
+export type GeneratePrDescriptionRequest = { repo_id: string, target_branch: string | null, };
+
+export type GeneratePrDescriptionResponse = { execution_process_id: string, source_head_sha: string, };
+
+export type PrDescriptionStatus = { "status": "running" } | { "status": "failed", message: string, } | { "status": "completed", title: string, body: string, source_head_sha: string, };
 
 export type ImageResponse = { id: string, file_path: string, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, created_at: string, updated_at: string, };
 
@@ -202,7 +208,7 @@ export type GitOperationError = { "type": "merge_conflicts", message: string, op
 
 export type PushError = { "type": "force_push_required" };
 
-export type PrError = { "type": "cli_not_installed", provider: ProviderKind, } | { "type": "cli_version_unsupported", provider: ProviderKind, found: string, minimum: string, } | { "type": "cli_not_logged_in", provider: ProviderKind, } | { "type": "git_cli_not_logged_in" } | { "type": "git_cli_not_installed" } | { "type": "target_branch_not_found", branch: string, } | { "type": "unsupported_provider" };
+export type PrError = { "type": "cli_not_installed", provider: ProviderKind, } | { "type": "cli_version_unsupported", provider: ProviderKind, found: string, minimum: string, } | { "type": "cli_not_logged_in", provider: ProviderKind, } | { "type": "git_cli_not_logged_in" } | { "type": "git_cli_not_installed" } | { "type": "target_branch_not_found", branch: string, } | { "type": "source_branch_changed" } | { "type": "unsupported_provider" };
 
 export type RunScriptError = { "type": "no_script_configured" } | { "type": "process_already_running" };
 
@@ -348,7 +354,7 @@ export type QueueStatus = { "status": "empty" } | { "status": "queued", message:
 
 export type ConflictOp = "rebase" | "merge" | "cherry_pick" | "revert";
 
-export type ExecutorAction = { typ: ExecutorActionType, next_action: ExecutorAction | null, };
+export type ExecutorAction = { typ: ExecutorActionType, next_action: ExecutorAction | null, affects_task_status: boolean, };
 
 export type McpConfig = { servers: { [key in string]?: JsonValue }, servers_path: Array<string>, template: JsonValue, preconfigured: JsonValue, is_toml_config: boolean, };
 
@@ -497,15 +503,11 @@ export type PatchType = { "type": "NORMALIZED_ENTRY", "content": NormalizedEntry
 
 export type JsonValue = number | string | boolean | Array<JsonValue> | { [key in string]?: JsonValue } | null;
 
-export const DEFAULT_PR_DESCRIPTION_PROMPT = `Update the PR that was just created with a better title and description.
-The PR number is #{pr_number} and the URL is {pr_url}.
+export const DEFAULT_PR_DESCRIPTION_PROMPT = `Analyze the committed changes in this branch relative to the target branch and generate a pull request title and description.
 
-Analyze the changes in this branch and write:
-1. A concise, descriptive title that summarizes the changes, postfixed with "(Vibe Kanban)"
-2. A detailed description that explains:
-   - What changes were made
-   - Why they were made (based on the task context)
-   - Any important implementation details
-   - At the end, include a note: "This PR was written using [Vibe Kanban](https://vibekanban.com)"
+Return exactly one JSON object and no other text:
+{"title":"concise descriptive title (Vibe Kanban)","body":"markdown description"}
 
-Use the appropriate CLI tool to update the PR (gh pr edit for GitHub, ge pr edit for Gitee, az repos pr update for Azure DevOps).`;
+The body must explain what changed, why it changed based on the task context, and important implementation or testing details. End with: This PR was written using [Vibe Kanban](https://vibekanban.com)
+
+Do not create or update a pull request. Do not modify files, commit, or push. Your only task is to inspect the existing changes and return the JSON object.`;

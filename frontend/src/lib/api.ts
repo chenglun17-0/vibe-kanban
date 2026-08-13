@@ -7,6 +7,9 @@ import {
   CreateFollowUpAttempt,
   EditorType,
   CreatePrApiRequest,
+  GeneratePrDescriptionRequest,
+  GeneratePrDescriptionResponse,
+  PrDescriptionStatus,
   CreateTask,
   CreateAndStartTaskRequest,
   CreateTaskAttemptBody,
@@ -697,6 +700,35 @@ export const attemptsApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponseAsResult<string, PrError>(response);
+  },
+
+  generatePRDescription: async (
+    attemptId: string,
+    data: GeneratePrDescriptionRequest
+  ): Promise<GeneratePrDescriptionResponse> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/pr/description`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<GeneratePrDescriptionResponse>(response);
+  },
+
+  getPRDescription: async (
+    attemptId: string,
+    processId: string,
+    repoId: string
+  ): Promise<PrDescriptionStatus> => {
+    const params = new URLSearchParams({
+      execution_process_id: processId,
+      repo_id: repoId,
+    });
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/pr/description?${params.toString()}`
+    );
+    return handleApiResponse<PrDescriptionStatus>(response);
   },
 
   startDevServer: async (attemptId: string): Promise<ExecutionProcess[]> => {

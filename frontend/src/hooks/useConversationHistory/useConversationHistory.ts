@@ -104,9 +104,10 @@ export const useConversationHistory = ({
   useEffect(() => {
     executionProcesses.current = executionProcessesRaw.filter(
       (ep) =>
-        ep.run_reason === 'setupscript' ||
-        ep.run_reason === 'cleanupscript' ||
-        ep.run_reason === 'codingagent'
+        ep.executor_action.affects_task_status &&
+        (ep.run_reason === 'setupscript' ||
+          ep.run_reason === 'cleanupscript' ||
+          ep.run_reason === 'codingagent')
     );
   }, [executionProcessesRaw]);
 
@@ -162,6 +163,7 @@ export const useConversationHistory = ({
     return (
       executionProcesses?.current.filter(
         (p) =>
+          p.executor_action.affects_task_status &&
           p.status === ExecutionProcessStatus.running &&
           p.run_reason !== 'devserver'
       ) ?? []

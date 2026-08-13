@@ -57,6 +57,12 @@ impl PrMonitorService {
             self.poll_interval
         );
 
+        match Merge::reconcile_merged_pr_tasks(&self.db.pool).await {
+            Ok(0) => {}
+            Ok(count) => info!("Reconciled {count} task(s) with already-merged PRs"),
+            Err(error) => error!("Failed to reconcile tasks with merged PRs: {error}"),
+        }
+
         let mut interval = interval(self.poll_interval);
 
         loop {

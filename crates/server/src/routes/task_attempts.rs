@@ -1773,6 +1773,8 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/rebase", post(rebase_task_attempt))
         .route("/conflicts/abort", post(abort_conflicts_task_attempt))
         .route("/pr", post(pr::create_pr))
+        .route("/pr/description", post(pr::generate_pr_description))
+        .route("/pr/description", get(pr::get_pr_description))
         .route("/pr/attach", post(pr::attach_existing_pr))
         .route("/pr/comments", get(pr::get_pr_comments))
         .route("/open-editor", post(open_task_attempt_in_editor))

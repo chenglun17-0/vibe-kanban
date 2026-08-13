@@ -36,11 +36,26 @@ pub enum ExecutorActionType {
 pub struct ExecutorAction {
     pub typ: ExecutorActionType,
     pub next_action: Option<Box<ExecutorAction>>,
+    #[serde(default = "default_true")]
+    pub affects_task_status: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl ExecutorAction {
     pub fn new(typ: ExecutorActionType, next_action: Option<Box<ExecutorAction>>) -> Self {
-        Self { typ, next_action }
+        Self {
+            typ,
+            next_action,
+            affects_task_status: true,
+        }
+    }
+
+    pub fn auxiliary(mut self) -> Self {
+        self.affects_task_status = false;
+        self
     }
     pub fn append_action(mut self, action: ExecutorAction) -> Self {
         if let Some(next) = self.next_action {
@@ -68,6 +83,28 @@ impl ExecutorAction {
             ExecutorActionType::ReviewRequest(request) => Some(request.base_executor()),
             ExecutorActionType::ScriptRequest(_) => None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn legacy_actions_still_affect_task_status() {
+        let action: ExecutorAction = serde_json::from_value(serde_json::json!({
+            "typ": {
+                "type": "ScriptRequest",
+                "script": "echo test",
+                "language": "Bash",
+                "context": "SetupScript",
+                "working_dir": null
+            },
+            "next_action": null
+        }))
+        .unwrap();
+
+        assert!(action.affects_task_status);
     }
 }
 

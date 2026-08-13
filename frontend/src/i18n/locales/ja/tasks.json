@@ -116,6 +116,7 @@
     "selectBaseBranch": "ベースブランチを選択",
     "draftLabel": "下書きとして作成",
     "autoGenerateLabel": "AIエージェントにより良いPR説明を生成させる",
+    "generating": "PR説明を生成中...",
     "creating": "作成中...",
     "createButton": "PRを作成",
     "errors": {
@@ -127,7 +128,10 @@
       "giteeCliNotLoggedIn": "Gitee CLI (ge) が認証されていません。GITEE_TOKEN を設定するか、「ge auth login」を実行してください。",
       "gitCliNotLoggedIn": "Gitが認証されていません。\"gh auth login\" を実行するかGitの認証情報を設定してから再試行してください。",
       "gitCliNotInstalled": "Git CLIがインストールされていません。PRを作成するにはGitをインストールしてください。",
-      "targetBranchNotFound": "ターゲットブランチ '{{branch}}' がリモートに存在しません。プルリクエストを作成する前にブランチが存在することを確認してください。"
+      "targetBranchNotFound": "ターゲットブランチ '{{branch}}' がリモートに存在しません。プルリクエストを作成する前にブランチが存在することを確認してください。",
+      "generationFailed": "AIエージェントがPR説明を生成できませんでした。",
+      "generationTimedOut": "PR説明の生成がタイムアウトしました。再試行してください。",
+      "sourceBranchChanged": "説明の生成中にソースブランチが変更されました。PRを作成する前に再生成してください。"
     },
     "loginRequired": {
       "title": "プルリクエストを作成するにはサインインしてください",

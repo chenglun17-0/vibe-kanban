@@ -577,6 +577,7 @@
     "selectBaseBranch": "Sélectionner la branche de base",
     "draftLabel": "Créer comme brouillon",
     "autoGenerateLabel": "Générer automatiquement la description de la PR avec l'IA",
+    "generating": "Génération de la description de la PR...",
     "creating": "Création en cours...",
     "createButton": "Créer la PR",
     "errors": {
@@ -588,7 +589,10 @@
       "giteeCliNotLoggedIn": "Gitee CLI (ge) n’est pas authentifié. Définissez GITEE_TOKEN ou exécutez « ge auth login ».",
       "gitCliNotLoggedIn": "Git n'est pas authentifié. Exécutez \"gh auth login\" (ou configurez les identifiants Git) et réessayez.",
       "gitCliNotInstalled": "Git CLI n'est pas installé. Installez Git pour créer une PR.",
-      "targetBranchNotFound": "La branche cible '{{branch}}' n'existe pas sur le dépôt distant. Veuillez vous assurer que la branche existe avant de créer une pull request."
+      "targetBranchNotFound": "La branche cible '{{branch}}' n'existe pas sur le dépôt distant. Veuillez vous assurer que la branche existe avant de créer une pull request.",
+      "generationFailed": "L'agent IA n'a pas pu générer la description de la PR.",
+      "generationTimedOut": "La génération de la description de la PR a expiré. Réessayez.",
+      "sourceBranchChanged": "La branche source a changé pendant la génération. Générez à nouveau la description avant de créer la PR."
     },
     "loginRequired": {
       "title": "Connectez-vous pour créer une pull request",

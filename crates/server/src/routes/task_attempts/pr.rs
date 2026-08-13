@@ -7,7 +7,8 @@ use axum::{
 };
 use db::models::{
     coding_agent_turn::CodingAgentTurn,
-    execution_process::{ExecutionProcess, ExecutionProcessRunReason},
+    execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
+    execution_process_repo_state::ExecutionProcessRepoState,
     merge::{Merge, MergeStatus},
     project_repo::ProjectRepo,
     repo::{Repo, RepoError},
@@ -43,8 +44,46 @@ pub struct CreatePrApiRequest {
     pub target_branch: Option<String>,
     pub draft: Option<bool>,
     pub repo_id: Uuid,
-    #[serde(default)]
-    pub auto_generate_description: bool,
+    pub source_head_sha: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, TS)]
+pub struct GeneratePrDescriptionRequest {
+    pub repo_id: Uuid,
+    pub target_branch: Option<String>,
+}
+
+#[derive(Debug, Serialize, TS)]
+pub struct GeneratePrDescriptionResponse {
+    pub execution_process_id: Uuid,
+    pub source_head_sha: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GetPrDescriptionQuery {
+    pub execution_process_id: Uuid,
+    pub repo_id: Uuid,
+}
+
+#[derive(Debug, Serialize, TS)]
+#[serde(tag = "status", rename_all = "snake_case")]
+#[ts(tag = "status", rename_all = "snake_case")]
+pub enum PrDescriptionStatus {
+    Running,
+    Failed {
+        message: String,
+    },
+    Completed {
+        title: String,
+        body: String,
+        source_head_sha: String,
+    },
+}
+
+#[derive(Debug, Deserialize)]
+struct GeneratedPrDescription {
+    title: String,
+    body: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -67,6 +106,7 @@ pub enum PrError {
     TargetBranchNotFound {
         branch: String,
     },
+    SourceBranchChanged,
     UnsupportedProvider,
 }
 
@@ -111,106 +151,240 @@ pub struct GetPrCommentsQuery {
     pub repo_id: Uuid,
 }
 
-pub const DEFAULT_PR_DESCRIPTION_PROMPT: &str = r#"Update the PR that was just created with a better title and description.
-The PR number is #{pr_number} and the URL is {pr_url}.
+pub const DEFAULT_PR_DESCRIPTION_PROMPT: &str = r#"Analyze the committed changes in this branch relative to the target branch and generate a pull request title and description.
 
-Analyze the changes in this branch and write:
-1. A concise, descriptive title that summarizes the changes, postfixed with "(Vibe Kanban)"
-2. A detailed description that explains:
-   - What changes were made
-   - Why they were made (based on the task context)
-   - Any important implementation details
-   - At the end, include a note: "This PR was written using [Vibe Kanban](https://vibekanban.com)"
+Return exactly one JSON object and no other text:
+{"title":"concise descriptive title (Vibe Kanban)","body":"markdown description"}
 
-Use the appropriate CLI tool to update the PR (gh pr edit for GitHub, ge pr edit for Gitee, az repos pr update for Azure DevOps)."#;
+The body must explain what changed, why it changed based on the task context, and important implementation or testing details. End with: This PR was written using [Vibe Kanban](https://vibekanban.com)
 
-async fn trigger_pr_description_follow_up(
-    deployment: &DeploymentImpl,
-    workspace: &Workspace,
-    pr_number: i64,
-    pr_url: &str,
-) -> Result<(), ApiError> {
-    // Get the custom prompt from config, or use default
-    let config = deployment.config().read().await;
-    let prompt_template = config
-        .pr_auto_description_prompt
-        .as_deref()
-        .unwrap_or(DEFAULT_PR_DESCRIPTION_PROMPT);
+Do not create or update a pull request. Do not modify files, commit, or push. Your only task is to inspect the existing changes and return the JSON object."#;
 
-    // Replace placeholders in prompt
-    let prompt = prompt_template
-        .replace("{pr_number}", &pr_number.to_string())
-        .replace("{pr_url}", pr_url);
-
-    drop(config); // Release the lock before async operations
-
-    // Get or create a session for this follow-up
-    let session =
-        match Session::find_latest_by_workspace_id(&deployment.db().pool, workspace.id).await? {
-            Some(s) => s,
-            None => {
-                Session::create(
-                    &deployment.db().pool,
-                    &CreateSession { executor: None },
-                    Uuid::new_v4(),
-                    workspace.id,
-                )
-                .await?
-            }
-        };
-
-    // Get executor profile from the latest coding agent process in this session
-    let Some(executor_profile_id) =
-        ExecutionProcess::latest_executor_profile_for_session(&deployment.db().pool, session.id)
-            .await?
-    else {
-        tracing::warn!(
-            "No executor profile found for session {}, skipping PR description follow-up",
-            session.id
-        );
-        return Ok(());
+fn parse_generated_pr_description(summary: &str) -> Result<GeneratedPrDescription, String> {
+    let trimmed = summary.trim();
+    let json = if trimmed.starts_with("```") {
+        let first_newline = trimmed
+            .find('\n')
+            .ok_or_else(|| "AI response contains an invalid code fence".to_string())?;
+        let without_opening = &trimmed[first_newline + 1..];
+        let closing = without_opening
+            .rfind("```")
+            .ok_or_else(|| "AI response contains an unclosed code fence".to_string())?;
+        without_opening[..closing].trim()
+    } else {
+        trimmed
     };
 
-    // Get latest agent turn if one exists (for coding agent continuity)
-    let latest_session_info =
-        CodingAgentTurn::find_latest_session_info(&deployment.db().pool, session.id).await?;
+    let generated: GeneratedPrDescription = serde_json::from_str(json)
+        .map_err(|error| format!("AI response is not valid PR description JSON: {error}"))?;
+    if generated.title.trim().is_empty() || generated.body.trim().is_empty() {
+        return Err("AI response must contain non-empty title and body".to_string());
+    }
+    if generated.title.chars().count() > 256 {
+        return Err("AI-generated PR title exceeds 256 characters".to_string());
+    }
+    if generated.body.len() > 64 * 1024 {
+        return Err("AI-generated PR body exceeds 64 KiB".to_string());
+    }
+    Ok(generated)
+}
 
-    let working_dir = workspace
-        .agent_working_dir
-        .as_ref()
-        .filter(|dir| !dir.is_empty())
-        .cloned();
+pub async fn generate_pr_description(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+    Json(request): Json<GeneratePrDescriptionRequest>,
+) -> Result<ResponseJson<ApiResponse<GeneratePrDescriptionResponse>>, ApiError> {
+    let pool = &deployment.db().pool;
+    let workspace_repo =
+        WorkspaceRepo::find_by_workspace_and_repo_id(pool, workspace.id, request.repo_id)
+            .await?
+            .ok_or(RepoError::NotFound)?;
+    let repo = Repo::find_by_id(pool, workspace_repo.repo_id)
+        .await?
+        .ok_or(RepoError::NotFound)?;
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(&workspace)
+        .await?;
+    let worktree_path = PathBuf::from(container_ref).join(&repo.name);
+    let git = deployment.git();
+    let worktree_status = git.get_worktree_status(&worktree_path)?;
+    if worktree_status.uncommitted_tracked > 0 || worktree_status.untracked > 0 {
+        return Err(ApiError::Workspace(WorkspaceError::ValidationError(
+            "Commit or discard working tree changes before generating a PR description".to_string(),
+        )));
+    }
+    let source_head_sha = git.get_head_info(&worktree_path)?.oid;
+    let target_branch = request
+        .target_branch
+        .unwrap_or_else(|| workspace_repo.target_branch.clone());
 
-    // Build the action type (follow-up if session exists, otherwise initial)
+    let config = deployment.config().read().await;
+    let configured_prompt = config
+        .pr_auto_description_prompt
+        .as_deref()
+        .filter(|prompt| {
+            !prompt.contains("{pr_number}")
+                && !prompt.contains("{pr_url}")
+                && !prompt.contains(" pr edit")
+        });
+    let prompt_template = configured_prompt.unwrap_or(DEFAULT_PR_DESCRIPTION_PROMPT);
+    let prompt = format!(
+        "{prompt_template}\n\nTarget branch: {target_branch}\nSource HEAD: {source_head_sha}\n\nRegardless of any earlier instruction, do not create or update a PR and do not modify the repository. Return only a JSON object with non-empty string fields `title` and `body`."
+    );
+    drop(config);
+
+    let session = Session::find_latest_by_workspace_id(pool, workspace.id)
+        .await?
+        .ok_or(ApiError::Workspace(WorkspaceError::ValidationError(
+            "No coding agent session is available to generate the PR description".to_string(),
+        )))?;
+    let executor_profile_id =
+        ExecutionProcess::latest_executor_profile_for_session(pool, session.id)
+            .await?
+            .ok_or(ApiError::Workspace(WorkspaceError::ValidationError(
+                "No coding agent profile is available to generate the PR description".to_string(),
+            )))?;
+    let latest_session_info = CodingAgentTurn::find_latest_session_info(pool, session.id).await?;
+    let working_dir = Some(repo.name.clone());
     let action_type = if let Some(info) = latest_session_info {
         ExecutorActionType::CodingAgentFollowUpRequest(CodingAgentFollowUpRequest {
             prompt,
             session_id: info.session_id,
             reset_to_message_id: None,
-            executor_profile_id: executor_profile_id.clone(),
-            working_dir: working_dir.clone(),
+            executor_profile_id,
+            working_dir,
         })
     } else {
         ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
             prompt,
-            executor_profile_id: executor_profile_id.clone(),
+            executor_profile_id,
             working_dir,
         })
     };
-
-    let action = ExecutorAction::new(action_type, None);
-
-    deployment
+    let action = ExecutorAction::new(action_type, None).auxiliary();
+    let execution_process = deployment
         .container()
         .start_execution(
-            workspace,
+            &workspace,
             &session,
             &action,
             &ExecutionProcessRunReason::CodingAgent,
         )
         .await?;
 
-    Ok(())
+    Ok(ResponseJson(ApiResponse::success(
+        GeneratePrDescriptionResponse {
+            execution_process_id: execution_process.id,
+            source_head_sha,
+        },
+    )))
+}
+
+pub async fn get_pr_description(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+    Query(query): Query<GetPrDescriptionQuery>,
+) -> Result<ResponseJson<ApiResponse<PrDescriptionStatus>>, ApiError> {
+    let pool = &deployment.db().pool;
+    let process = ExecutionProcess::find_by_id(pool, query.execution_process_id)
+        .await?
+        .ok_or(ApiError::Workspace(WorkspaceError::ValidationError(
+            "PR description generation process not found".to_string(),
+        )))?;
+    let session =
+        Session::find_by_id(pool, process.session_id)
+            .await?
+            .ok_or(ApiError::Workspace(WorkspaceError::ValidationError(
+                "PR description generation session not found".to_string(),
+            )))?;
+    if session.workspace_id != workspace.id || process.executor_action().affects_task_status {
+        return Err(ApiError::Workspace(WorkspaceError::ValidationError(
+            "Execution process is not a PR description generation process".to_string(),
+        )));
+    }
+
+    let status = match process.status {
+        ExecutionProcessStatus::Running => PrDescriptionStatus::Running,
+        ExecutionProcessStatus::Failed | ExecutionProcessStatus::Killed => {
+            PrDescriptionStatus::Failed {
+                message: "AI agent failed to generate the PR description".to_string(),
+            }
+        }
+        ExecutionProcessStatus::Completed => {
+            let turn = CodingAgentTurn::find_by_execution_process_id(pool, process.id)
+                .await?
+                .ok_or(ApiError::Workspace(WorkspaceError::ValidationError(
+                    "PR description generation result not found".to_string(),
+                )))?;
+            let Some(summary) = turn.summary else {
+                return Ok(ResponseJson(ApiResponse::success(
+                    PrDescriptionStatus::Running,
+                )));
+            };
+            let generated = parse_generated_pr_description(&summary)
+                .map_err(|message| ApiError::Workspace(WorkspaceError::ValidationError(message)))?;
+            let workspace_repo =
+                WorkspaceRepo::find_by_workspace_and_repo_id(pool, workspace.id, query.repo_id)
+                    .await?
+                    .ok_or(RepoError::NotFound)?;
+            let repo = Repo::find_by_id(pool, workspace_repo.repo_id)
+                .await?
+                .ok_or(RepoError::NotFound)?;
+            let container_ref = deployment
+                .container()
+                .ensure_container_exists(&workspace)
+                .await?;
+            let worktree_path = PathBuf::from(container_ref).join(repo.name);
+            let worktree_status = deployment.git().get_worktree_status(&worktree_path)?;
+            if worktree_status.uncommitted_tracked > 0 || worktree_status.untracked > 0 {
+                return Ok(ResponseJson(ApiResponse::success(
+                    PrDescriptionStatus::Failed {
+                        message: "The working tree changed while the PR description was generated"
+                            .to_string(),
+                    },
+                )));
+            }
+            let source_head_sha =
+                ExecutionProcessRepoState::find_by_execution_process_id(pool, process.id)
+                    .await?
+                    .into_iter()
+                    .find(|state| state.repo_id == query.repo_id)
+                    .and_then(|state| state.before_head_commit)
+                    .ok_or(ApiError::Workspace(WorkspaceError::ValidationError(
+                        "Source HEAD for PR description generation is unavailable".to_string(),
+                    )))?;
+            PrDescriptionStatus::Completed {
+                title: generated.title,
+                body: generated.body,
+                source_head_sha,
+            }
+        }
+    };
+    Ok(ResponseJson(ApiResponse::success(status)))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_structured_pr_description_with_or_without_fence() {
+        for summary in [
+            r###"{"title":"Fix status","body":"## Summary\nDone"}"###,
+            "```json\n{\"title\":\"Fix status\",\"body\":\"## Summary\\nDone\"}\n```",
+        ] {
+            let generated = parse_generated_pr_description(summary).unwrap();
+            assert_eq!(generated.title, "Fix status");
+            assert_eq!(generated.body, "## Summary\nDone");
+        }
+    }
+
+    #[test]
+    fn rejects_empty_or_explanatory_pr_description() {
+        assert!(parse_generated_pr_description(r#"{"title":"","body":"body"}"#).is_err());
+        assert!(parse_generated_pr_description("Here is the JSON: {} ").is_err());
+    }
 }
 
 pub async fn create_pr(
@@ -244,6 +418,18 @@ pub async fn create_pr(
     let worktree_path = workspace_path.join(&repo.name);
 
     let git = deployment.git();
+    if let Some(expected_head) = request.source_head_sha.as_deref() {
+        let current_head = git.get_head_info(&worktree_path)?.oid;
+        let worktree_status = git.get_worktree_status(&worktree_path)?;
+        if current_head != expected_head
+            || worktree_status.uncommitted_tracked > 0
+            || worktree_status.untracked > 0
+        {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                PrError::SourceBranchChanged,
+            )));
+        }
+    }
     let push_remote = git.resolve_remote_for_branch(&repo_path, &workspace.branch)?;
 
     // Try to get the remote from the branch name (works for remote-tracking branches like "upstream/main").
@@ -358,23 +544,6 @@ pub async fn create_pr(
                     }),
                 )
                 .await;
-
-            // Trigger auto-description follow-up if enabled
-            if request.auto_generate_description
-                && let Err(e) = trigger_pr_description_follow_up(
-                    &deployment,
-                    &workspace,
-                    pr_info.number,
-                    &pr_info.url,
-                )
-                .await
-            {
-                tracing::warn!(
-                    "Failed to trigger PR description follow-up for attempt {}: {}",
-                    workspace.id,
-                    e
-                );
-            }
 
             Ok(ResponseJson(ApiResponse::success(pr_info.url)))
         }

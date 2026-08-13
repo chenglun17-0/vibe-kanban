@@ -157,11 +157,11 @@
         "description": "PR作成の動作を設定",
         "autoDescription": {
           "label": "デフォルトでPR説明を自動生成",
-          "helper": "有効にすると、AIエージェントがPR作成後に自動的にタイトルと説明を更新します。"
+          "helper": "有効にすると、AIエージェントがPR作成前にタイトルと説明を生成します。"
         },
         "customPrompt": {
           "useCustom": "カスタムプロンプトを使用",
-          "helper": "PR説明生成時のAIエージェント用カスタムプロンプト。{pr_number}と{pr_url}をプレースホルダーとして使用できます。"
+          "helper": "PRのタイトルと説明を生成するカスタムプロンプト。エージェントはtitleとbodyのJSONフィールドを返す必要があります。"
         }
       },
       "notifications": {

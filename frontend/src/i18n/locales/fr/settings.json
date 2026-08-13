@@ -157,11 +157,11 @@
         "description": "Configurez le comportement de création des PR",
         "autoDescription": {
           "label": "Générer automatiquement la description de la PR par défaut",
-          "helper": "Lorsque activé, l'agent IA mettra automatiquement à jour le titre et la description de la PR après sa création."
+          "helper": "Lorsque cette option est activée, l'agent IA génère le titre et la description avant la création de la PR."
         },
         "customPrompt": {
           "useCustom": "Utiliser un prompt personnalisé",
-          "helper": "Prompt personnalisé pour l'agent IA lors de la génération des descriptions de PR. Utilisez {pr_number} et {pr_url} comme variables."
+          "helper": "Prompt personnalisé pour générer les titres et descriptions de PR. L'agent doit renvoyer les champs JSON title et body."
         }
       },
       "notifications": {

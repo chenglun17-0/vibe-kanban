@@ -116,6 +116,7 @@
     "selectBaseBranch": "Seleccionar rama base",
     "draftLabel": "Crear como borrador",
     "autoGenerateLabel": "Pedir al agente de IA que genere una mejor descripción del PR",
+    "generating": "Generando la descripción del PR...",
     "creating": "Creando...",
     "createButton": "Crear PR",
     "errors": {
@@ -127,7 +128,10 @@
       "giteeCliNotLoggedIn": "Gitee CLI (ge) no está autenticado. Configura GITEE_TOKEN o ejecuta \"ge auth login\".",
       "gitCliNotLoggedIn": "Git no está autenticado. Ejecuta \"gh auth login\" (o configura las credenciales de Git) e inténtalo de nuevo.",
       "gitCliNotInstalled": "Git CLI no está instalado. Instala Git para crear una PR.",
-      "targetBranchNotFound": "La rama objetivo '{{branch}}' no existe en el remoto. Por favor, asegúrese de que la rama exista antes de crear una solicitud de extracción."
+      "targetBranchNotFound": "La rama objetivo '{{branch}}' no existe en el remoto. Por favor, asegúrese de que la rama exista antes de crear una solicitud de extracción.",
+      "generationFailed": "El agente de IA no pudo generar la descripción del PR.",
+      "generationTimedOut": "Se agotó el tiempo para generar la descripción del PR. Inténtalo de nuevo.",
+      "sourceBranchChanged": "La rama de origen cambió mientras se generaba la descripción. Genérala de nuevo antes de crear el PR."
     },
     "loginRequired": {
       "title": "Inicia sesión para crear un pull request",

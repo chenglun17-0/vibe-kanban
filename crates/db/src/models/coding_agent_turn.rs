@@ -263,15 +263,17 @@ impl CodingAgentTurn {
         pool: &SqlitePool,
         archived: bool,
     ) -> Result<std::collections::HashSet<Uuid>, sqlx::Error> {
-        let result: Vec<Uuid> = sqlx::query_scalar!(
-            r#"SELECT DISTINCT s.workspace_id as "workspace_id!: Uuid"
+        let result: Vec<Uuid> = sqlx::query_scalar(
+            r#"SELECT DISTINCT s.workspace_id
                FROM coding_agent_turns cat
                JOIN execution_processes ep ON cat.execution_process_id = ep.id
                JOIN sessions s ON ep.session_id = s.id
                JOIN workspaces w ON s.workspace_id = w.id
-               WHERE cat.seen = 0 AND w.archived = $1"#,
-            archived
+               WHERE cat.seen = 0
+                 AND w.archived = $1
+                 AND json_extract(ep.executor_action, '$.affects_task_status') IS NOT 0"#,
         )
+        .bind(archived)
         .fetch_all(pool)
         .await?;
 
