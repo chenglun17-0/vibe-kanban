@@ -154,7 +154,18 @@ export function ProjectTasks() {
   const isMobile = !isXL;
   const posthog = usePostHog();
 
-  const { isLoading: projectLoading, error: projectError } = useProject();
+  const {
+    projectsById,
+    isLoading: projectLoading,
+    error: projectError,
+  } = useProject();
+  const projectNames = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(projectsById).map(([id, project]) => [id, project.name])
+      ),
+    [projectsById]
+  );
   const [isProjectPickerOpen, setIsProjectPickerOpen] = useState(false);
 
   useEffect(() => {
@@ -772,6 +783,7 @@ export function ProjectTasks() {
           selectedTaskId={selectedTask?.id}
           onCreateTask={handleCreateNewTask}
           projectId={routeProjectId}
+          projectNames={isGlobalTasksRoute ? projectNames : undefined}
         />
       </div>
     );

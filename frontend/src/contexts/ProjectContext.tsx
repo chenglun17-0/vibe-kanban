@@ -13,6 +13,7 @@ import { useTask } from '@/hooks/useTask';
 interface ProjectContextValue {
   projectId: string | undefined;
   project: Project | undefined;
+  projectsById: Record<string, Project>;
   isLoading: boolean;
   error: Error | null;
   isError: boolean;
@@ -55,11 +56,12 @@ export function ProjectProvider({ children }: ProjectProviderProps) {
     () => ({
       projectId,
       project,
+      projectsById,
       isLoading,
       error,
       isError: !!error,
     }),
-    [projectId, project, isLoading, error]
+    [projectId, project, projectsById, isLoading, error]
   );
 
   // Centralized page title management

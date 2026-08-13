@@ -90,6 +90,30 @@ export function TaskCard({
     });
   }, [isOpen]);
 
+  const cardActions = (
+    <>
+      {task.has_in_progress_attempt && (
+        <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+      )}
+      {task.last_attempt_failed && (
+        <XCircle className="h-4 w-4 text-destructive" />
+      )}
+      {task.parent_workspace_id && (
+        <Button
+          variant="icon"
+          onClick={handleParentClick}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          disabled={isNavigatingToParent}
+          title={t('navigateToParent')}
+        >
+          <Link className="h-4 w-4" />
+        </Button>
+      )}
+      <ActionsDropdown task={task} projectId={projectId} />
+    </>
+  );
+
   return (
     <KanbanCard
       key={task.id}
@@ -102,37 +126,20 @@ export function TaskCard({
       forwardedRef={localRef}
     >
       <div className="flex flex-col gap-2">
+        {projectName && (
+          <div className="flex min-w-0 items-center justify-between gap-2">
+            <span className="truncate text-[11px] font-medium tracking-wide text-muted-foreground">
+              #{projectName}
+            </span>
+            <div className="flex shrink-0 items-center gap-1">
+              {cardActions}
+            </div>
+          </div>
+        )}
         <TaskCardHeader
           title={task.title}
-          right={
-            <>
-              {task.has_in_progress_attempt && (
-                <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-              )}
-              {task.last_attempt_failed && (
-                <XCircle className="h-4 w-4 text-destructive" />
-              )}
-              {task.parent_workspace_id && (
-                <Button
-                  variant="icon"
-                  onClick={handleParentClick}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  disabled={isNavigatingToParent}
-                  title={t('navigateToParent')}
-                >
-                  <Link className="h-4 w-4" />
-                </Button>
-              )}
-              <ActionsDropdown task={task} projectId={projectId} />
-            </>
-          }
+          right={projectName ? undefined : cardActions}
         />
-        {projectName && (
-          <span className="w-fit rounded-full border bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-            {projectName}
-          </span>
-        )}
         {task.description && (
           <p className="text-sm text-secondary-foreground break-words">
             {task.description.length > 130
