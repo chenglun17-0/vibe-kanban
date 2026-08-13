@@ -515,6 +515,9 @@
       "insufficientPermissions": "權限不足。請確認 CLI 具有必要權限。",
       "repoNotFoundOrNoAccess": "找不到儲存庫或沒有存取權。請檢查儲存庫權限並確保已完成驗證。",
       "failedToCreate": "建立 PR 失敗",
+      "cliVersionUnsupported": "{{provider}} CLI 版本 {{found}} 不受支援。請安裝 {{minimum}} 或更高版本。",
+      "giteeCliNotInstalled": "尚未安裝 Gitee CLI（ge）。請從 https://gitee.com/imjoey/ge 安裝 ge v5.21.0 或更高版本，然後執行「ge auth login」。",
+      "giteeCliNotLoggedIn": "Gitee CLI（ge）尚未驗證。請設定 GITEE_TOKEN，或執行「ge auth login」後再試。",
       "gitCliNotLoggedIn": "Git 尚未驗證。請執行 gh auth login（或設定 Git 憑證）後重試。",
       "gitCliNotInstalled": "未安裝 Git CLI。請安裝 Git 以建立 PR。",
       "targetBranchNotFound": "遠端不存在目標分支 {{branch}}。建立 PR 前請確認該分支存在。"
@@ -753,6 +756,7 @@
     "openPrInBrowser": "在瀏覽器中開啟 PR",
     "errors": {
       "cliNotInstalled": "{{provider}} CLI 未安裝",
+      "cliVersionUnsupported": "{{provider}} 版本 {{found}} 不受支援。請安裝 {{minimum}} 或更高版本。",
       "unsupportedProvider": "不支援的 Git 提供者",
       "failedToLoadPrs": "載入拉取請求失敗",
       "prNotFound": "找不到拉取請求",

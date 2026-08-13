@@ -175,6 +175,21 @@ const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
       };
 
       if (result.error) {
+        if (result.error.type === 'cli_version_unsupported') {
+          setError(
+            t('createPrDialog.errors.cliVersionUnsupported', {
+              provider:
+                result.error.provider === 'gitee'
+                  ? 'Gitee'
+                  : result.error.provider,
+              found: result.error.found,
+              minimum: result.error.minimum,
+            })
+          );
+          setGhCliHelp(null);
+          return;
+        }
+
         if (
           result.error.type === 'cli_not_installed' ||
           result.error.type === 'cli_not_logged_in'
@@ -183,17 +198,25 @@ const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
           if (result.error.provider === 'git_hub' && isMacEnvironment) {
             await showGhCliSetupDialog();
           } else {
-            const providerName =
-              result.error.provider === 'git_hub'
-                ? 'GitHub'
-                : result.error.provider === 'azure_dev_ops'
-                  ? 'Azure DevOps'
-                  : 'Git host';
-            const action =
-              result.error.type === 'cli_not_installed'
-                ? 'not installed'
-                : 'not logged in';
-            setError(`${providerName} CLI is ${action}`);
+            if (result.error.provider === 'gitee') {
+              const key =
+                result.error.type === 'cli_not_installed'
+                  ? 'createPrDialog.errors.giteeCliNotInstalled'
+                  : 'createPrDialog.errors.giteeCliNotLoggedIn';
+              setError(t(key));
+            } else {
+              const providerName =
+                result.error.provider === 'git_hub'
+                  ? 'GitHub'
+                  : result.error.provider === 'azure_dev_ops'
+                    ? 'Azure DevOps'
+                    : 'Git host';
+              const action =
+                result.error.type === 'cli_not_installed'
+                  ? 'not installed'
+                  : 'not logged in';
+              setError(`${providerName} CLI is ${action}`);
+            }
             setGhCliHelp(null);
           }
           return;

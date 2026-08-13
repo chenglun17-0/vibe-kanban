@@ -227,8 +227,17 @@ pub async fn search_repo(
 #[serde(tag = "type", rename_all = "snake_case")]
 #[ts(tag = "type", rename_all = "snake_case")]
 pub enum ListPrsError {
-    CliNotInstalled { provider: ProviderKind },
-    AuthFailed { message: String },
+    CliNotInstalled {
+        provider: ProviderKind,
+    },
+    CliVersionUnsupported {
+        provider: ProviderKind,
+        found: String,
+        minimum: String,
+    },
+    AuthFailed {
+        message: String,
+    },
     UnsupportedProvider,
 }
 
@@ -273,6 +282,17 @@ pub async fn list_open_prs(
         Err(GitHostError::CliNotInstalled { provider }) => Ok(ResponseJson(
             ApiResponse::error_with_data(ListPrsError::CliNotInstalled { provider }),
         )),
+        Err(GitHostError::CliVersionUnsupported {
+            provider,
+            found,
+            minimum,
+        }) => Ok(ResponseJson(ApiResponse::error_with_data(
+            ListPrsError::CliVersionUnsupported {
+                provider,
+                found,
+                minimum,
+            },
+        ))),
         Err(GitHostError::AuthFailed(message)) => Ok(ResponseJson(ApiResponse::error_with_data(
             ListPrsError::AuthFailed { message },
         ))),

@@ -122,6 +122,9 @@
       "insufficientPermissions": "Permisos insuficientes. Por favor asegúrate de que la CLI tenga los permisos necesarios.",
       "repoNotFoundOrNoAccess": "Repositorio no encontrado o sin acceso. Por favor verifica el acceso al repositorio y asegúrate de estar autenticado.",
       "failedToCreate": "Error al crear PR",
+      "cliVersionUnsupported": "La versión {{found}} de {{provider}} CLI no es compatible. Instala la versión {{minimum}} o una posterior.",
+      "giteeCliNotInstalled": "Gitee CLI (ge) no está instalado. Instala ge v5.21.0 o posterior desde https://gitee.com/imjoey/ge y ejecuta \"ge auth login\".",
+      "giteeCliNotLoggedIn": "Gitee CLI (ge) no está autenticado. Configura GITEE_TOKEN o ejecuta \"ge auth login\".",
       "gitCliNotLoggedIn": "Git no está autenticado. Ejecuta \"gh auth login\" (o configura las credenciales de Git) e inténtalo de nuevo.",
       "gitCliNotInstalled": "Git CLI no está instalado. Instala Git para crear una PR.",
       "targetBranchNotFound": "La rama objetivo '{{branch}}' no existe en el remoto. Por favor, asegúrese de que la rama exista antes de crear una solicitud de extracción."
@@ -753,6 +756,7 @@
     "openPrInBrowser": "Abrir PR en el navegador",
     "errors": {
       "cliNotInstalled": "{{provider}} CLI no está instalado",
+      "cliVersionUnsupported": "La versión {{found}} de {{provider}} no es compatible. Instala la versión {{minimum}} o una posterior.",
       "unsupportedProvider": "Proveedor Git no soportado",
       "failedToLoadPrs": "Error al cargar solicitudes de extracción",
       "prNotFound": "Solicitud de extracción no encontrada",

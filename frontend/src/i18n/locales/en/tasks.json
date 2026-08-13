@@ -583,6 +583,9 @@
       "insufficientPermissions": "Insufficient permissions. Please ensure the CLI has the necessary permissions.",
       "repoNotFoundOrNoAccess": "Repository not found or no access. Please check your repository access and ensure you are authenticated.",
       "failedToCreate": "Failed to create PR",
+      "cliVersionUnsupported": "{{provider}} CLI version {{found}} is not supported. Install version {{minimum}} or newer.",
+      "giteeCliNotInstalled": "Gitee CLI (ge) is not installed. Install ge v5.21.0 or newer from https://gitee.com/imjoey/ge, then run \"ge auth login\".",
+      "giteeCliNotLoggedIn": "Gitee CLI (ge) is not authenticated. Set GITEE_TOKEN or run \"ge auth login\" and try again.",
       "gitCliNotLoggedIn": "Git is not authenticated. Run \"gh auth login\" (or configure Git credentials) and try again.",
       "gitCliNotInstalled": "Git CLI is not installed. Install Git to create a PR.",
       "targetBranchNotFound": "Target branch '{{branch}}' does not exist on remote. Please ensure the branch exists before creating a pull request."
@@ -753,6 +756,7 @@
     "openPrInBrowser": "Open PR in browser",
     "errors": {
       "cliNotInstalled": "{{provider}} CLI is not installed",
+      "cliVersionUnsupported": "{{provider}} version {{found}} is not supported. Install version {{minimum}} or newer.",
       "unsupportedProvider": "Git provider not supported",
       "failedToLoadPrs": "Failed to load pull requests",
       "prNotFound": "Pull request not found",

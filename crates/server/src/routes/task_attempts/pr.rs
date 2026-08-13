@@ -27,7 +27,7 @@ use services::services::{
     container::ContainerService,
     git_host::{
         self, CreatePrRequest, GitHostError, GitHostProvider, ProviderKind, UnifiedPrComment,
-        github::GhCli,
+        gitee::GeCli, github::GhCli,
     },
 };
 use ts_rs::TS;
@@ -51,11 +51,22 @@ pub struct CreatePrApiRequest {
 #[serde(tag = "type", rename_all = "snake_case")]
 #[ts(tag = "type", rename_all = "snake_case")]
 pub enum PrError {
-    CliNotInstalled { provider: ProviderKind },
-    CliNotLoggedIn { provider: ProviderKind },
+    CliNotInstalled {
+        provider: ProviderKind,
+    },
+    CliVersionUnsupported {
+        provider: ProviderKind,
+        found: String,
+        minimum: String,
+    },
+    CliNotLoggedIn {
+        provider: ProviderKind,
+    },
     GitCliNotLoggedIn,
     GitCliNotInstalled,
-    TargetBranchNotFound { branch: String },
+    TargetBranchNotFound {
+        branch: String,
+    },
     UnsupportedProvider,
 }
 
@@ -82,8 +93,17 @@ pub struct PrCommentsResponse {
 #[ts(tag = "type", rename_all = "snake_case")]
 pub enum GetPrCommentsError {
     NoPrAttached,
-    CliNotInstalled { provider: ProviderKind },
-    CliNotLoggedIn { provider: ProviderKind },
+    CliNotInstalled {
+        provider: ProviderKind,
+    },
+    CliVersionUnsupported {
+        provider: ProviderKind,
+        found: String,
+        minimum: String,
+    },
+    CliNotLoggedIn {
+        provider: ProviderKind,
+    },
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -102,7 +122,7 @@ Analyze the changes in this branch and write:
    - Any important implementation details
    - At the end, include a note: "This PR was written using [Vibe Kanban](https://vibekanban.com)"
 
-Use the appropriate CLI tool to update the PR (gh pr edit for GitHub, az repos pr update for Azure DevOps)."#;
+Use the appropriate CLI tool to update the PR (gh pr edit for GitHub, ge pr edit for Gitee, az repos pr update for Azure DevOps)."#;
 
 async fn trigger_pr_description_follow_up(
     deployment: &DeploymentImpl,
@@ -371,6 +391,17 @@ pub async fn create_pr(
                         provider: *provider,
                     }),
                 )),
+                GitHostError::CliVersionUnsupported {
+                    provider,
+                    found,
+                    minimum,
+                } => Ok(ResponseJson(ApiResponse::error_with_data(
+                    PrError::CliVersionUnsupported {
+                        provider: *provider,
+                        found: found.clone(),
+                        minimum: minimum.clone(),
+                    },
+                ))),
                 GitHostError::AuthFailed(_) => Ok(ResponseJson(ApiResponse::error_with_data(
                     PrError::CliNotLoggedIn { provider },
                 ))),
@@ -564,6 +595,17 @@ pub async fn get_pr_comments(
                         provider: *provider,
                     }),
                 )),
+                GitHostError::CliVersionUnsupported {
+                    provider,
+                    found,
+                    minimum,
+                } => Ok(ResponseJson(ApiResponse::error_with_data(
+                    GetPrCommentsError::CliVersionUnsupported {
+                        provider: *provider,
+                        found: found.clone(),
+                        minimum: minimum.clone(),
+                    },
+                ))),
                 GitHostError::AuthFailed(_) => Ok(ResponseJson(ApiResponse::error_with_data(
                     GetPrCommentsError::CliNotLoggedIn { provider },
                 ))),
@@ -596,9 +638,20 @@ pub struct CreateWorkspaceFromPrResponse {
 #[ts(tag = "type", rename_all = "snake_case")]
 pub enum CreateFromPrError {
     PrNotFound,
-    BranchFetchFailed { message: String },
-    CliNotInstalled { provider: ProviderKind },
-    AuthFailed { message: String },
+    BranchFetchFailed {
+        message: String,
+    },
+    CliNotInstalled {
+        provider: ProviderKind,
+    },
+    CliVersionUnsupported {
+        provider: ProviderKind,
+        found: String,
+        minimum: String,
+    },
+    AuthFailed {
+        message: String,
+    },
     UnsupportedProvider,
     RepoNotInProject,
 }
@@ -687,39 +740,42 @@ pub async fn create_workspace_from_pr(
     // Update workspace with container_ref so start_execution can find it
     workspace.container_ref = Some(container_ref.clone());
 
-    // Use gh pr checkout to fetch and switch to the PR branch
-    // This handles SSH/HTTPS auth correctly regardless of fork URL format
     let worktree_path = PathBuf::from(&container_ref).join(&repo.name);
-    match GhCli::new().get_repo_info(&remote.url, &worktree_path) {
-        Ok(repo_info) => {
-            if let Err(e) = GhCli::new().pr_checkout(
-                &worktree_path,
-                &repo_info.owner,
-                &repo_info.repo_name,
-                payload.pr_number,
-            ) {
-                tracing::error!("Failed to checkout PR branch: {e}");
-                return Ok(ResponseJson(ApiResponse::error_with_data(
-                    CreateFromPrError::BranchFetchFailed {
-                        message: e.to_string(),
-                    },
-                )));
-            }
-            // Update workspace branch to the actual PR branch
-            Workspace::update_branch_name(pool, workspace.id, &payload.head_branch).await?;
-            workspace.branch = payload.head_branch.clone();
+    let checkout_result = match git_host::GitHostService::from_url(&remote.url) {
+        Ok(host) if host.provider_kind() == ProviderKind::GitHub => GhCli::new()
+            .get_repo_info(&remote.url, &worktree_path)
+            .and_then(|repo_info| {
+                GhCli::new().pr_checkout(
+                    &worktree_path,
+                    &repo_info.owner,
+                    &repo_info.repo_name,
+                    payload.pr_number,
+                )
+            })
+            .map_err(|error| error.to_string()),
+        Ok(host) if host.provider_kind() == ProviderKind::Gitee => {
+            GeCli::parse_repo_url(&remote.url)
+                .and_then(|repo_info| {
+                    GeCli::new().checkout_pr(&worktree_path, &repo_info, payload.pr_number)
+                })
+                .map_err(|error| error.to_string())
         }
-        Err(e) => {
-            tracing::error!(
-                "Failed to get repo info for PR checkout (gh CLI may not be installed): {e}"
-            );
-            return Ok(ResponseJson(ApiResponse::error_with_data(
-                CreateFromPrError::BranchFetchFailed {
-                    message: format!("Failed to get repository info: {e}"),
-                },
-            )));
-        }
+        Ok(host) => Err(format!(
+            "Checking out pull requests from {} is not supported",
+            host.provider_kind()
+        )),
+        Err(error) => Err(error.to_string()),
+    };
+
+    if let Err(message) = checkout_result {
+        tracing::error!("Failed to checkout PR branch: {message}");
+        return Ok(ResponseJson(ApiResponse::error_with_data(
+            CreateFromPrError::BranchFetchFailed { message },
+        )));
     }
+
+    Workspace::update_branch_name(pool, workspace.id, &payload.head_branch).await?;
+    workspace.branch = payload.head_branch.clone();
 
     Merge::create_pr(
         pool,

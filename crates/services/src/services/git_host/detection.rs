@@ -1,66 +1,59 @@
-//! Git hosting provider detection from repository URLs.
+//! Git hosting provider detection from repository and pull request URLs.
+
+use url::Url;
 
 use super::types::ProviderKind;
 
-/// Detect the git hosting provider from a remote URL.
-///
-/// Supports:
-/// - GitHub.com: `https://github.com/owner/repo` or `git@github.com:owner/repo.git`
-/// - GitHub Enterprise: URLs containing `github.` (e.g., `https://github.company.com/owner/repo`)
-/// - Azure DevOps: `https://dev.azure.com/org/project/_git/repo` or legacy `https://org.visualstudio.com/...`
-pub fn detect_provider_from_url(url: &str) -> ProviderKind {
-    let url_lower = url.to_lowercase();
-
-    if url_lower.contains("github.com") {
-        return ProviderKind::GitHub;
+fn extract_host(value: &str) -> Option<String> {
+    if let Ok(url) = Url::parse(value)
+        && let Some(host) = url.host_str()
+    {
+        return Some(host.to_ascii_lowercase());
     }
 
-    // Check Azure patterns before GHE to avoid false positives
-    if url_lower.contains("dev.azure.com")
-        || url_lower.contains(".visualstudio.com")
-        || url_lower.contains("ssh.dev.azure.com")
+    // Git commonly uses SCP-like remotes such as `git@example.com:owner/repo.git`.
+    let authority = value.split_once(':')?.0;
+    let host = authority
+        .rsplit_once('@')
+        .map_or(authority, |(_, host)| host);
+    if host.is_empty() || host.contains('/') || host.contains('\\') {
+        return None;
+    }
+
+    Some(host.to_ascii_lowercase())
+}
+
+/// Detect the git hosting provider from a repository remote or pull request URL.
+pub fn detect_provider_from_url(url: &str) -> ProviderKind {
+    let Some(host) = extract_host(url) else {
+        return ProviderKind::Unknown;
+    };
+    let path = Url::parse(url)
+        .ok()
+        .map(|parsed| parsed.path().to_ascii_lowercase())
+        .or_else(|| {
+            url.split_once(':')
+                .map(|(_, path)| path.to_ascii_lowercase())
+        })
+        .unwrap_or_default();
+
+    if host == "gitee.com" {
+        return ProviderKind::Gitee;
+    }
+
+    if host == "dev.azure.com"
+        || host == "ssh.dev.azure.com"
+        || host.ends_with(".visualstudio.com")
+        || path.contains("/_git/")
     {
         return ProviderKind::AzureDevOps;
     }
 
-    // /_git/ is unique to Azure DevOps
-    if url_lower.contains("/_git/") {
-        return ProviderKind::AzureDevOps;
-    }
-
-    // GitHub Enterprise (contains "github." but not the Azure patterns above)
-    if url_lower.contains("github.") {
+    if host == "github.com" || host.starts_with("github.") {
         return ProviderKind::GitHub;
     }
 
     ProviderKind::Unknown
-}
-
-/// Detect the git hosting provider from a PR URL.
-///
-/// Supports:
-/// - GitHub: `https://github.com/owner/repo/pull/123`
-/// - GitHub Enterprise: `https://github.company.com/owner/repo/pull/123`
-/// - Azure DevOps: `https://dev.azure.com/org/project/_git/repo/pullrequest/123`
-#[cfg(test)]
-fn detect_provider_from_pr_url(pr_url: &str) -> ProviderKind {
-    let url_lower = pr_url.to_lowercase();
-
-    // GitHub pattern: contains /pull/ in the path
-    if url_lower.contains("/pull/") {
-        // Could be github.com or GHE
-        if url_lower.contains("github.com") || url_lower.contains("github.") {
-            return ProviderKind::GitHub;
-        }
-    }
-
-    // Azure DevOps pattern: contains /pullrequest/ in the path
-    if url_lower.contains("/pullrequest/") {
-        return ProviderKind::AzureDevOps;
-    }
-
-    // Fall back to general URL detection
-    detect_provider_from_url(pr_url)
 }
 
 #[cfg(test)]
@@ -85,6 +78,33 @@ mod tests {
             detect_provider_from_url("git@github.com:owner/repo.git"),
             ProviderKind::GitHub
         );
+        assert_eq!(
+            detect_provider_from_url("ssh://git@github.com/owner/repo.git"),
+            ProviderKind::GitHub
+        );
+    }
+
+    #[test]
+    fn test_gitee_urls() {
+        for url in [
+            "https://gitee.com/owner/repo.git",
+            "git@gitee.com:owner/repo.git",
+            "ssh://git@gitee.com/owner/repo.git",
+            "https://gitee.com/owner/repo/pulls/123",
+        ] {
+            assert_eq!(detect_provider_from_url(url), ProviderKind::Gitee);
+        }
+    }
+
+    #[test]
+    fn test_gitee_host_must_match_exactly() {
+        for url in [
+            "https://gitee.com.evil.example/owner/repo",
+            "https://example.com/gitee.com/owner/repo",
+            "git@gitee.com.evil.example:owner/repo.git",
+        ] {
+            assert_eq!(detect_provider_from_url(url), ProviderKind::Unknown);
+        }
     }
 
     #[test]
@@ -149,27 +169,21 @@ mod tests {
     }
 
     #[test]
-    fn test_pr_url_github() {
+    fn test_pr_urls() {
         assert_eq!(
-            detect_provider_from_pr_url("https://github.com/owner/repo/pull/123"),
+            detect_provider_from_url("https://github.com/owner/repo/pull/123"),
             ProviderKind::GitHub
         );
         assert_eq!(
-            detect_provider_from_pr_url("https://github.company.com/owner/repo/pull/456"),
+            detect_provider_from_url("https://github.company.com/owner/repo/pull/456"),
             ProviderKind::GitHub
         );
-    }
-
-    #[test]
-    fn test_pr_url_azure() {
         assert_eq!(
-            detect_provider_from_pr_url(
-                "https://dev.azure.com/org/project/_git/repo/pullrequest/123"
-            ),
+            detect_provider_from_url("https://dev.azure.com/org/project/_git/repo/pullrequest/123"),
             ProviderKind::AzureDevOps
         );
         assert_eq!(
-            detect_provider_from_pr_url(
+            detect_provider_from_url(
                 "https://org.visualstudio.com/project/_git/repo/pullrequest/456"
             ),
             ProviderKind::AzureDevOps

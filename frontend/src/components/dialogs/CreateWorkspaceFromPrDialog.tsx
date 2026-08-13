@@ -109,8 +109,24 @@ const CreateWorkspaceFromPrDialogImpl =
       switch (prsResult.error?.type) {
         case 'cli_not_installed':
           prsErrorMessage = t('createWorkspaceFromPr.errors.cliNotInstalled', {
-            provider: prsResult.error.provider,
+            provider:
+              prsResult.error.provider === 'gitee'
+                ? 'Gitee (ge)'
+                : prsResult.error.provider,
           });
+          break;
+        case 'cli_version_unsupported':
+          prsErrorMessage = t(
+            'createWorkspaceFromPr.errors.cliVersionUnsupported',
+            {
+              provider:
+                prsResult.error.provider === 'gitee'
+                  ? 'Gitee (ge)'
+                  : prsResult.error.provider,
+              found: prsResult.error.found,
+              minimum: prsResult.error.minimum,
+            }
+          );
           break;
         case 'auth_failed':
           prsErrorMessage = prsResult.error.message;
@@ -158,7 +174,21 @@ const CreateWorkspaceFromPrDialogImpl =
             case 'cli_not_installed':
               throw new Error(
                 t('createWorkspaceFromPr.errors.cliNotInstalled', {
-                  provider: result.error.provider,
+                  provider:
+                    result.error.provider === 'gitee'
+                      ? 'Gitee (ge)'
+                      : result.error.provider,
+                })
+              );
+            case 'cli_version_unsupported':
+              throw new Error(
+                t('createWorkspaceFromPr.errors.cliVersionUnsupported', {
+                  provider:
+                    result.error.provider === 'gitee'
+                      ? 'Gitee (ge)'
+                      : result.error.provider,
+                  found: result.error.found,
+                  minimum: result.error.minimum,
                 })
               );
             case 'pr_not_found':

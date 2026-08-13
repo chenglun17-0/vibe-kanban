@@ -215,12 +215,24 @@ const PrCommentsDialogImpl = NiceModal.create<PrCommentsDialogProps>(
 function getErrorMessage(error: unknown): string {
   // Check if it's an API error with error_data
   if (error && typeof error === 'object' && 'error_data' in error) {
-    const errorData = (error as { error_data?: { type?: string } }).error_data;
+    const errorData = (
+      error as {
+        error_data?: {
+          type?: string;
+          provider?: string;
+          found?: string;
+          minimum?: string;
+        };
+      }
+    ).error_data;
     if (errorData?.type === 'no_pr_attached') {
       return 'No PR is attached to this task attempt. Create a PR first to see comments.';
     }
     if (errorData?.type === 'cli_not_installed') {
       return 'CLI is not installed. Please install it to fetch PR comments.';
+    }
+    if (errorData?.type === 'cli_version_unsupported') {
+      return `${errorData.provider ?? 'CLI'} version ${errorData.found ?? 'unknown'} is unsupported. Install version ${errorData.minimum ?? 'a newer version'} or newer.`;
     }
     if (errorData?.type === 'cli_not_logged_in') {
       return 'CLI is not logged in. Please authenticate to fetch PR comments.';

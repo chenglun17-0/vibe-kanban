@@ -7,6 +7,7 @@ use ts_rs::TS;
 #[serde(rename_all = "snake_case")]
 pub enum ProviderKind {
     GitHub,
+    Gitee,
     AzureDevOps,
     Unknown,
 }
@@ -15,6 +16,7 @@ impl std::fmt::Display for ProviderKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ProviderKind::GitHub => write!(f, "GitHub"),
+            ProviderKind::Gitee => write!(f, "Gitee"),
             ProviderKind::AzureDevOps => write!(f, "Azure DevOps"),
             ProviderKind::Unknown => write!(f, "Unknown"),
         }
@@ -46,6 +48,14 @@ pub enum GitHostError {
     RepoNotFoundOrNoAccess(String),
     #[error("{provider} CLI is not installed or not available in PATH")]
     CliNotInstalled { provider: ProviderKind },
+    #[error(
+        "{provider} CLI version {found} is unsupported; version {minimum} or newer is required"
+    )]
+    CliVersionUnsupported {
+        provider: ProviderKind,
+        found: String,
+        minimum: String,
+    },
     #[error("Unsupported git hosting provider")]
     UnsupportedProvider,
     #[error("CLI returned unexpected output: {0}")]
@@ -60,6 +70,7 @@ impl GitHostError {
                 | GitHostError::InsufficientPermissions(_)
                 | GitHostError::RepoNotFoundOrNoAccess(_)
                 | GitHostError::CliNotInstalled { .. }
+                | GitHostError::CliVersionUnsupported { .. }
                 | GitHostError::UnsupportedProvider
         )
     }

@@ -583,6 +583,9 @@
       "insufficientPermissions": "Permissions insuffisantes. Veuillez vous assurer que le CLI dispose des permissions nécessaires.",
       "repoNotFoundOrNoAccess": "Dépôt non trouvé ou accès refusé. Veuillez vérifier votre accès au dépôt et vous assurer que vous êtes authentifié.",
       "failedToCreate": "Échec de la création de la PR",
+      "cliVersionUnsupported": "La version {{found}} de {{provider}} CLI n’est pas prise en charge. Installez la version {{minimum}} ou une version ultérieure.",
+      "giteeCliNotInstalled": "Gitee CLI (ge) n’est pas installé. Installez ge v5.21.0 ou ultérieur depuis https://gitee.com/imjoey/ge, puis exécutez « ge auth login ».",
+      "giteeCliNotLoggedIn": "Gitee CLI (ge) n’est pas authentifié. Définissez GITEE_TOKEN ou exécutez « ge auth login ».",
       "gitCliNotLoggedIn": "Git n'est pas authentifié. Exécutez \"gh auth login\" (ou configurez les identifiants Git) et réessayez.",
       "gitCliNotInstalled": "Git CLI n'est pas installé. Installez Git pour créer une PR.",
       "targetBranchNotFound": "La branche cible '{{branch}}' n'existe pas sur le dépôt distant. Veuillez vous assurer que la branche existe avant de créer une pull request."
@@ -753,6 +756,7 @@
     "openPrInBrowser": "Ouvrir la PR dans le navigateur",
     "errors": {
       "cliNotInstalled": "{{provider}} CLI n'est pas installé",
+      "cliVersionUnsupported": "La version {{found}} de {{provider}} n’est pas prise en charge. Installez la version {{minimum}} ou une version ultérieure.",
       "unsupportedProvider": "Fournisseur Git non pris en charge",
       "failedToLoadPrs": "Échec du chargement des pull requests",
       "prNotFound": "Pull request non trouvée",
