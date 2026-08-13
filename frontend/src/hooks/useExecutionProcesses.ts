@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useJsonPatchWsStream } from './useJsonPatchWsStream';
 import type { ExecutionProcess } from 'shared/types';
+import { affectsTaskStatus } from '@/constants/processes';
 
 type ExecutionProcessState = {
   execution_processes: Record<string, ExecutionProcess>;
@@ -55,7 +56,7 @@ export const useExecutionProcesses = (
   );
   const isAttemptRunning = executionProcesses.some(
     (process) =>
-      process.executor_action.affects_task_status &&
+      affectsTaskStatus(process) &&
       (process.run_reason === 'codingagent' ||
         process.run_reason === 'setupscript' ||
         process.run_reason === 'cleanupscript') &&

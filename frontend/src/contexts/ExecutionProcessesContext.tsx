@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
 import type { ExecutionProcess } from 'shared/types';
+import { affectsTaskStatus } from '@/constants/processes';
 
 type ExecutionProcessesContextType = {
   executionProcessesAll: ExecutionProcess[];
@@ -48,7 +49,7 @@ export const ExecutionProcessesProvider: React.FC<{
     () =>
       visible.some(
         (process) =>
-          process.executor_action.affects_task_status &&
+          affectsTaskStatus(process) &&
           (process.run_reason === 'codingagent' ||
             process.run_reason === 'setupscript' ||
             process.run_reason === 'cleanupscript') &&

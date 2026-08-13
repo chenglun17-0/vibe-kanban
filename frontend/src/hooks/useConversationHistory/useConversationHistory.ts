@@ -21,6 +21,7 @@ import type {
   UseConversationHistoryResult,
 } from './types';
 import { makeLoadingPatch, nextActionPatch } from './constants';
+import { affectsTaskStatus } from '@/constants/processes';
 
 export type {
   AddEntryType,
@@ -104,7 +105,7 @@ export const useConversationHistory = ({
   useEffect(() => {
     executionProcesses.current = executionProcessesRaw.filter(
       (ep) =>
-        ep.executor_action.affects_task_status &&
+        affectsTaskStatus(ep) &&
         (ep.run_reason === 'setupscript' ||
           ep.run_reason === 'cleanupscript' ||
           ep.run_reason === 'codingagent')
@@ -163,7 +164,7 @@ export const useConversationHistory = ({
     return (
       executionProcesses?.current.filter(
         (p) =>
-          p.executor_action.affects_task_status &&
+          affectsTaskStatus(p) &&
           p.status === ExecutionProcessStatus.running &&
           p.run_reason !== 'devserver'
       ) ?? []
