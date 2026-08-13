@@ -438,6 +438,8 @@ pub async fn get_project_repository(
 
 #[derive(Debug, Serialize, TS)]
 pub struct RunnablePlan {
+    pub project_id: Uuid,
+    pub project_name: String,
     pub repo_id: Uuid,
     pub repo_name: String,
     // Repo-relative path, e.g. "docs/exec-plan/agents/foo.md".
@@ -452,12 +454,10 @@ pub struct PlanContentQuery {
     pub path: String,
 }
 
-/// List tech-solution plan docs marked 待运行 that are not yet linked to a
-/// non-cancelled task. Surfaced in the kanban To Do column.
-pub async fn list_runnable_plans(
-    Extension(project): Extension<Project>,
-    State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<Vec<RunnablePlan>>>, ApiError> {
+async fn runnable_plans_for_project(
+    deployment: &DeploymentImpl,
+    project: &Project,
+) -> Result<Vec<RunnablePlan>, ApiError> {
     let pool = &deployment.db().pool;
     let repos = deployment
         .project()
@@ -475,6 +475,8 @@ pub async fn list_runnable_plans(
                 continue;
             }
             plans.push(RunnablePlan {
+                project_id: project.id,
+                project_name: project.name.clone(),
                 repo_id: repo.id,
                 repo_name: repo.display_name.clone(),
                 path: doc.path,
@@ -483,7 +485,35 @@ pub async fn list_runnable_plans(
             });
         }
     }
+    Ok(plans)
+}
+
+/// List a project's tech-solution plan docs marked 待运行 that are not yet
+/// linked to a non-cancelled task.
+pub async fn list_runnable_plans(
+    Extension(project): Extension<Project>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<RunnablePlan>>>, ApiError> {
+    let mut plans = runnable_plans_for_project(&deployment, &project).await?;
     plans.sort_by(|a, b| a.title.cmp(&b.title).then_with(|| a.path.cmp(&b.path)));
+    Ok(ResponseJson(ApiResponse::success(plans)))
+}
+
+/// Aggregate runnable plans from every project for the global Tasks board.
+pub async fn list_all_runnable_plans(
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<RunnablePlan>>>, ApiError> {
+    let projects = Project::find_all(&deployment.db().pool).await?;
+    let mut plans = Vec::new();
+    for project in projects {
+        plans.extend(runnable_plans_for_project(&deployment, &project).await?);
+    }
+    plans.sort_by(|a, b| {
+        a.project_name
+            .cmp(&b.project_name)
+            .then_with(|| a.title.cmp(&b.title))
+            .then_with(|| a.path.cmp(&b.path))
+    });
     Ok(ResponseJson(ApiResponse::success(plans)))
 }
 
@@ -534,5 +564,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .route("/stream/ws", get(stream_projects_ws))
         .nest("/{id}", project_id_router);
 
-    Router::new().nest("/projects", projects_router)
+    Router::new()
+        .route("/runnable-plans", get(list_all_runnable_plans))
+        .nest("/projects", projects_router)
 }

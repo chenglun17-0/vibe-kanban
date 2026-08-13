@@ -14,8 +14,7 @@ export const runnablePlansKeys = {
 export function useRunnablePlans(projectId?: string) {
   return useQuery({
     queryKey: runnablePlansKeys.byProject(projectId),
-    queryFn: () => plansApi.listRunnable(projectId!),
-    enabled: !!projectId,
+    queryFn: () => plansApi.listRunnable(projectId),
     refetchOnWindowFocus: true,
   });
 }

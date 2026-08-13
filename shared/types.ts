@@ -126,7 +126,7 @@ export type ApiResponse<T, E = T> = { success: boolean, data: T | null, error_da
 
 export type RegisterRepoRequest = { path: string, display_name: string | null, };
 
-export type RunnablePlan = { repo_id: string, repo_name: string, path: string, title: string, updated: string | null, };
+export type RunnablePlan = { project_id: string, project_name: string, repo_id: string, repo_name: string, path: string, title: string, updated: string | null, };
 
 export type InitRepoRequest = { parent_path: string, folder_name: string, };
 

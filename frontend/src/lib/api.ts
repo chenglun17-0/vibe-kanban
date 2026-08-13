@@ -352,10 +352,11 @@ export const tasksApi = {
 
 // Runnable exec-plan APIs (tech-solution docs marked 待运行)
 export const plansApi = {
-  listRunnable: async (projectId: string): Promise<RunnablePlan[]> => {
-    const response = await makeRequest(
-      `/api/projects/${projectId}/runnable-plans`
-    );
+  listRunnable: async (projectId?: string): Promise<RunnablePlan[]> => {
+    const path = projectId
+      ? `/api/projects/${projectId}/runnable-plans`
+      : '/api/runnable-plans';
+    const response = await makeRequest(path);
     return handleApiResponse<RunnablePlan[]>(response);
   },
 

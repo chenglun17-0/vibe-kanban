@@ -43,7 +43,7 @@ function TaskKanbanBoard({
               color={statusBoardColors[statusKey]}
               onAddTask={onCreateTask}
             />
-            {statusKey === 'todo' && projectId && (
+            {statusKey === 'todo' && (
               <RunnablePlansSection projectId={projectId} />
             )}
             <KanbanCards>

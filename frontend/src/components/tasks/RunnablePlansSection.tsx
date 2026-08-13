@@ -8,7 +8,7 @@ import { StartPlanDialog } from '@/components/dialogs/plans/StartPlanDialog';
 import type { RunnablePlan } from 'shared/types';
 
 interface RunnablePlansSectionProps {
-  projectId: string;
+  projectId?: string;
 }
 
 /**
@@ -22,11 +22,11 @@ function RunnablePlansSection({ projectId }: RunnablePlansSectionProps) {
   if (plans.length === 0) return null;
 
   const handleView = (plan: RunnablePlan) => {
-    ViewPlanDialog.show({ projectId, plan });
+    ViewPlanDialog.show({ projectId: plan.project_id, plan });
   };
 
   const handleStart = (plan: RunnablePlan) => {
-    StartPlanDialog.show({ projectId, plan });
+    StartPlanDialog.show({ projectId: plan.project_id, plan });
   };
 
   return (
@@ -48,6 +48,11 @@ function RunnablePlansSection({ projectId }: RunnablePlansSectionProps) {
               <p className="text-sm font-medium leading-5 break-words">
                 {plan.title}
               </p>
+              {!projectId && (
+                <p className="text-xs text-muted-foreground">
+                  {plan.project_name}
+                </p>
+              )}
               <p className="text-xs text-muted-foreground break-all">
                 {plan.path}
               </p>
