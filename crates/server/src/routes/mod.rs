@@ -49,9 +49,21 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         ))
         .with_state(deployment);
 
+    frontend_router()
+        .nest("/api", base_routes)
+        .into_make_service()
+}
+
+#[cfg(debug_assertions)]
+fn frontend_router() -> Router {
+    Router::new()
+        .route("/", get(frontend::serve_development_frontend_hint))
+        .route("/{*path}", get(frontend::serve_development_frontend_hint))
+}
+
+#[cfg(not(debug_assertions))]
+fn frontend_router() -> Router {
     Router::new()
         .route("/", get(frontend::serve_frontend_root))
         .route("/{*path}", get(frontend::serve_frontend))
-        .nest("/api", base_routes)
-        .into_make_service()
 }

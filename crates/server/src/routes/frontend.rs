@@ -1,24 +1,41 @@
-use axum::{
-    body::Body,
-    http::HeaderValue,
-    response::{IntoResponse, Response},
-};
-use reqwest::{StatusCode, header};
+use axum::response::IntoResponse;
+use reqwest::StatusCode;
+
+#[cfg(not(debug_assertions))]
+use axum::{body::Body, http::HeaderValue, response::Response};
+#[cfg(not(debug_assertions))]
+use reqwest::header;
+#[cfg(not(debug_assertions))]
 use rust_embed::RustEmbed;
 
+#[cfg(not(debug_assertions))]
 #[derive(RustEmbed)]
 #[folder = "../../frontend/dist"]
 pub struct Assets;
 
+#[cfg(debug_assertions)]
+pub async fn serve_development_frontend_hint() -> impl IntoResponse {
+    let frontend_port = std::env::var("FRONTEND_PORT").unwrap_or_else(|_| "3000".to_string());
+    (
+        StatusCode::NOT_FOUND,
+        format!(
+            "Development backend serves API only. Open http://localhost:{frontend_port} instead."
+        ),
+    )
+}
+
+#[cfg(not(debug_assertions))]
 pub async fn serve_frontend(uri: axum::extract::Path<String>) -> impl IntoResponse {
     let path = uri.trim_start_matches('/');
     serve_file(path).await
 }
 
+#[cfg(not(debug_assertions))]
 pub async fn serve_frontend_root() -> impl IntoResponse {
     serve_file("index.html").await
 }
 
+#[cfg(not(debug_assertions))]
 async fn serve_file(path: &str) -> impl IntoResponse + use<> {
     let file = Assets::get(path);
 
