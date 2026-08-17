@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { KanbanCard } from '@/components/ui/shadcn-io/kanban';
-import { Link, Loader2, XCircle } from 'lucide-react';
+import { Link, Loader2, Play, XCircle } from 'lucide-react';
 import type { TaskWithAttemptStatus } from 'shared/types';
 import { ActionsDropdown } from '@/components/ui/actions-dropdown';
+import { CreateAttemptDialog } from '@/components/dialogs/tasks/CreateAttemptDialog';
 import { Button } from '@/components/ui/button';
 import { useNavigateWithSearch } from '@/hooks';
 import { paths } from '@/lib/paths';
@@ -90,8 +91,31 @@ export function TaskCard({
     });
   }, [isOpen]);
 
+  const handleStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      CreateAttemptDialog.show({
+        taskId: task.id,
+        projectId,
+      });
+    },
+    [projectId, task.id]
+  );
+
   const cardActions = (
     <>
+      {status === 'todo' && !task.has_in_progress_attempt && (
+        <Button
+          variant="icon"
+          onClick={handleStart}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          title={t('startAttempt')}
+          aria-label={t('startAttempt')}
+        >
+          <Play className="h-4 w-4" />
+        </Button>
+      )}
       {task.has_in_progress_attempt && (
         <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
       )}
