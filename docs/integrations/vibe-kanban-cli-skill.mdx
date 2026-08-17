@@ -1,11 +1,11 @@
 ---
 title: "Vibe Kanban CLI Skill"
-description: "Install a local Agent Skill for inspecting projects and creating Vibe Kanban tasks without MCP."
+description: "Install a local Agent Skill for inspecting, creating, and starting Vibe Kanban tasks without MCP."
 ---
 
 Vibe Kanban ships a `vibe-kanban-cli` skill that coding agents can use to inspect
-the current workspace and create tasks through the local HTTP API. It does not
-use MCP or access the Vibe Kanban database directly.
+the current workspace and create or start tasks through the local HTTP API. It
+does not use MCP or access the Vibe Kanban database directly.
 
 ## Install the skill
 
@@ -32,11 +32,13 @@ The bundled CLI supports:
 
 - resolving the Vibe Kanban context for the current working directory;
 - listing projects;
-- listing and reading tasks; and
-- creating tasks from JSON input.
+- listing and reading tasks;
+- creating tasks from JSON input;
+- starting an existing task; and
+- creating and immediately starting a task.
 
-It intentionally does not update or delete tasks, modify repository scripts, or
-start task execution.
+It intentionally does not update or delete tasks, modify repository scripts,
+stop executions, or directly manage attempt workspaces.
 
 ## Run the CLI directly
 
@@ -50,6 +52,7 @@ node "$VK_CLI" context --json
 node "$VK_CLI" project list --json
 node "$VK_CLI" task list --project-id <uuid> --json
 node "$VK_CLI" task get --task-id <uuid> --json
+node "$VK_CLI" task start --task-id <uuid> --json
 ```
 
 Create a task by passing JSON through standard input:
@@ -63,6 +66,24 @@ node "$VK_CLI" task create --from-json - --json <<'JSON'
 }
 JSON
 ```
+
+Use `task create-and-start` with the same input shape to create a task and start
+its first attempt in one operation:
+
+```bash
+node "$VK_CLI" task create-and-start --from-json - --json <<'JSON'
+{
+  "project_id": "<uuid>",
+  "title": "Add user authentication",
+  "description": "Implement login and document the acceptance criteria."
+}
+JSON
+```
+
+Start commands use the configured default executor profile and all repositories
+attached to the project. For each repository, the CLI chooses its configured
+default target branch, then its current branch, then its first available branch.
+Vibe Kanban creates and manages the attempt worktree.
 
 Every operation writes JSON to stdout on success. Errors are written as JSON to
 stderr and return a nonzero exit code, allowing agents to distinguish success,

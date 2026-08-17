@@ -190,6 +190,185 @@ test("task create validates and forwards JSON input", async () => {
   );
 });
 
+test("task start resolves the default profile and repository branches", async () => {
+  let receivedBody;
+  await withServer(
+    (request, response) => {
+      if (request.url === "/api/tasks/task-1") {
+        respond(response, { id: "task-1", project_id: "project-1" });
+        return;
+      }
+      if (request.url === "/api/info") {
+        respond(response, {
+          config: {
+            executor_profile: { executor: "CODEX", variant: "DEFAULT" },
+          },
+        });
+        return;
+      }
+      if (request.url === "/api/projects/project-1/repositories") {
+        respond(response, [
+          {
+            id: "repo-1",
+            display_name: "Primary",
+            default_target_branch: "develop",
+          },
+          { id: "repo-2", display_name: "Secondary" },
+        ]);
+        return;
+      }
+      if (request.url === "/api/repos/repo-1/branches") {
+        respond(response, [
+          { name: "main", is_current: true },
+          { name: "develop", is_current: false },
+        ]);
+        return;
+      }
+      if (request.url === "/api/repos/repo-2/branches") {
+        respond(response, [
+          { name: "stable", is_current: false },
+          { name: "feature", is_current: true },
+        ]);
+        return;
+      }
+      if (request.url === "/api/task-attempts") {
+        assert.equal(request.method, "POST");
+        const chunks = [];
+        request.on("data", (chunk) => chunks.push(chunk));
+        request.on("end", () => {
+          receivedBody = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+          respond(response, { id: "attempt-1", task_id: "task-1" });
+        });
+        return;
+      }
+      response.writeHead(404).end();
+    },
+    async (baseUrl) => {
+      const state = runtime(baseUrl);
+      const exitCode = await run(
+        ["task", "start", "--task-id", "task-1", "--json"],
+        state.overrides,
+      );
+
+      assert.equal(exitCode, 0);
+      assert.deepEqual(receivedBody, {
+        task_id: "task-1",
+        executor_profile_id: { executor: "CODEX", variant: "DEFAULT" },
+        repos: [
+          { repo_id: "repo-1", target_branch: "develop" },
+          { repo_id: "repo-2", target_branch: "feature" },
+        ],
+      });
+      assert.equal(state.stdout.json().attempt.id, "attempt-1");
+      assert.equal(state.stderr.text(), "");
+    },
+  );
+});
+
+test("task create-and-start forwards task input with automatic defaults", async () => {
+  let receivedBody;
+  await withServer(
+    (request, response) => {
+      if (request.url === "/api/info") {
+        respond(response, {
+          config: { executor_profile: { executor: "CLAUDE_CODE" } },
+        });
+        return;
+      }
+      if (request.url === "/api/projects/project-1/repositories") {
+        respond(response, [
+          {
+            id: "repo-1",
+            display_name: "Primary",
+            default_target_branch: "missing",
+          },
+        ]);
+        return;
+      }
+      if (request.url === "/api/repos/repo-1/branches") {
+        respond(response, [{ name: "main", is_current: false }]);
+        return;
+      }
+      if (request.url === "/api/tasks/create-and-start") {
+        assert.equal(request.method, "POST");
+        const chunks = [];
+        request.on("data", (chunk) => chunks.push(chunk));
+        request.on("end", () => {
+          receivedBody = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+          respond(response, {
+            id: "task-1",
+            has_in_progress_attempt: true,
+          });
+        });
+        return;
+      }
+      response.writeHead(404).end();
+    },
+    async (baseUrl) => {
+      const state = runtime(
+        baseUrl,
+        JSON.stringify({
+          project_id: "project-1",
+          title: "  Create and start  ",
+          description: "Acceptance criteria",
+        }),
+      );
+      const exitCode = await run(
+        ["task", "create-and-start", "--from-json", "-", "--json"],
+        state.overrides,
+      );
+
+      assert.equal(exitCode, 0);
+      assert.deepEqual(receivedBody, {
+        task: {
+          project_id: "project-1",
+          title: "Create and start",
+          description: "Acceptance criteria",
+        },
+        executor_profile_id: { executor: "CLAUDE_CODE" },
+        repos: [{ repo_id: "repo-1", target_branch: "main" }],
+      });
+      assert.equal(state.stdout.json().task.has_in_progress_attempt, true);
+      assert.equal(state.stderr.text(), "");
+    },
+  );
+});
+
+test("task start fails before creating an attempt when the project has no repositories", async () => {
+  let attemptRequests = 0;
+  await withServer(
+    (request, response) => {
+      if (request.url === "/api/tasks/task-1") {
+        respond(response, { id: "task-1", project_id: "project-1" });
+        return;
+      }
+      if (request.url === "/api/info") {
+        respond(response, {
+          config: { executor_profile: { executor: "CODEX" } },
+        });
+        return;
+      }
+      if (request.url === "/api/projects/project-1/repositories") {
+        respond(response, []);
+        return;
+      }
+      if (request.url === "/api/task-attempts") attemptRequests += 1;
+      response.writeHead(404).end();
+    },
+    async (baseUrl) => {
+      const state = runtime(baseUrl);
+      const exitCode = await run(
+        ["task", "start", "--task-id", "task-1", "--json"],
+        state.overrides,
+      );
+
+      assert.equal(exitCode, 1);
+      assert.equal(attemptRequests, 0);
+      assert.equal(state.stderr.json().error.code, "START_CONFIGURATION_ERROR");
+    },
+  );
+});
+
 test("task create rejects empty titles before sending a request", async () => {
   let requestCount = 0;
   await withServer(

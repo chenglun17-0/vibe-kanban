@@ -326,6 +326,102 @@ async function readCreateInput(source, stdin, cwd) {
   };
 }
 
+function selectTargetBranch(repo, branches) {
+  if (!Array.isArray(branches)) {
+    throw new CliError(
+      `Invalid branch response for repository ${repo.id}`,
+      "INVALID_RESPONSE",
+    );
+  }
+
+  const validBranches = branches.filter(
+    (branch) => branch && typeof branch.name === "string" && branch.name,
+  );
+  const branchNames = new Set(validBranches.map((branch) => branch.name));
+  if (
+    typeof repo.default_target_branch === "string" &&
+    branchNames.has(repo.default_target_branch)
+  ) {
+    return repo.default_target_branch;
+  }
+
+  const currentBranch = validBranches.find((branch) => branch.is_current);
+  const targetBranch = currentBranch?.name || validBranches[0]?.name;
+  if (!targetBranch) {
+    throw new CliError(
+      `Repository ${repo.display_name || repo.id} has no branches`,
+      "START_CONFIGURATION_ERROR",
+    );
+  }
+  return targetBranch;
+}
+
+async function resolveStartConfiguration(baseUrl, projectId, requestOptions) {
+  const [info, projectRepos] = await Promise.all([
+    requestJson(baseUrl, "/api/info", requestOptions),
+    requestJson(
+      baseUrl,
+      `/api/projects/${encodeURIComponent(projectId)}/repositories`,
+      requestOptions,
+    ),
+  ]);
+
+  const configuredProfile = info?.config?.executor_profile;
+  if (
+    !configuredProfile ||
+    typeof configuredProfile !== "object" ||
+    typeof configuredProfile.executor !== "string" ||
+    configuredProfile.executor.trim() === "" ||
+    (configuredProfile.variant !== undefined &&
+      configuredProfile.variant !== null &&
+      typeof configuredProfile.variant !== "string")
+  ) {
+    throw new CliError(
+      "No valid default executor profile is configured",
+      "START_CONFIGURATION_ERROR",
+    );
+  }
+  if (!Array.isArray(projectRepos)) {
+    throw new CliError(
+      "Backend returned an invalid project repository list",
+      "INVALID_RESPONSE",
+    );
+  }
+  if (projectRepos.length === 0) {
+    throw new CliError(
+      "The task project has no repositories",
+      "START_CONFIGURATION_ERROR",
+    );
+  }
+
+  const repos = await Promise.all(
+    projectRepos.map(async (repo) => {
+      if (!repo || typeof repo.id !== "string" || repo.id.trim() === "") {
+        throw new CliError(
+          "Backend returned a project repository without an ID",
+          "INVALID_RESPONSE",
+        );
+      }
+      const branches = await requestJson(
+        baseUrl,
+        `/api/repos/${encodeURIComponent(repo.id)}/branches`,
+        requestOptions,
+      );
+      return {
+        repo_id: repo.id,
+        target_branch: selectTargetBranch(repo, branches),
+      };
+    }),
+  );
+
+  const executorProfileId = { executor: configuredProfile.executor };
+  if (configuredProfile.variant !== undefined) {
+    executorProfileId.variant = configuredProfile.variant;
+  }
+
+  return { executor_profile_id: executorProfileId, repos };
+}
+
 function helpText() {
   return `Vibe Kanban task CLI
 
@@ -335,6 +431,8 @@ Commands:
   task list --project-id <uuid> [--status <status>] [--limit <count>] --json
   task get --task-id <uuid> --json
   task create --from-json <path|-> --json
+  task start --task-id <uuid> --json
+  task create-and-start --from-json <path|-> --json
 `;
 }
 
@@ -433,6 +531,62 @@ async function execute(args, runtime) {
       ...requestOptions,
       method: "POST",
       body: payload,
+    });
+    writeJson(runtime.stdout, { ok: true, task });
+    return 0;
+  }
+
+  if (group === "task" && action === "start") {
+    const options = parseOptions(rest, {
+      "--task-id": "string",
+      "--json": "boolean",
+    });
+    const taskId = requireOption(options, "--task-id");
+    const task = await requestJson(
+      baseUrl,
+      `/api/tasks/${encodeURIComponent(taskId)}`,
+      requestOptions,
+    );
+    if (!task || typeof task.project_id !== "string") {
+      throw new CliError(
+        "Backend returned a task without a project ID",
+        "INVALID_RESPONSE",
+      );
+    }
+    const startConfiguration = await resolveStartConfiguration(
+      baseUrl,
+      task.project_id,
+      requestOptions,
+    );
+    const attempt = await requestJson(baseUrl, "/api/task-attempts", {
+      ...requestOptions,
+      method: "POST",
+      body: { task_id: taskId, ...startConfiguration },
+    });
+    writeJson(runtime.stdout, { ok: true, attempt });
+    return 0;
+  }
+
+  if (group === "task" && action === "create-and-start") {
+    const options = parseOptions(rest, {
+      "--from-json": "string",
+      "--json": "boolean",
+    });
+    const source = requireOption(options, "--from-json");
+    const taskPayload = await readCreateInput(
+      source,
+      runtime.stdin,
+      runtime.cwd,
+    );
+    const startConfiguration = await resolveStartConfiguration(
+      baseUrl,
+      taskPayload.project_id,
+      requestOptions,
+    );
+    const task = await requestJson(baseUrl, "/api/tasks/create-and-start", {
+      ...requestOptions,
+      method: "POST",
+      body: { task: taskPayload, ...startConfiguration },
     });
     writeJson(runtime.stdout, { ok: true, task });
     return 0;

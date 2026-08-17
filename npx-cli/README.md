@@ -22,7 +22,7 @@ npx vibe-kanban skill install
 
 The skill is installed at `~/.agents/skills/vibe-kanban-cli`. It uses a bundled,
 JSON-oriented CLI to discover the current Vibe Kanban workspace, inspect projects
-and tasks, and create tasks without MCP:
+and tasks, and create or start tasks without MCP:
 
 ```bash
 VK_CLI="$HOME/.agents/skills/vibe-kanban-cli/scripts/vibe-kanban-cli.js"
@@ -36,10 +36,14 @@ node "$VK_CLI" task create --from-json - --json <<'JSON'
   "description": "Implement login and document acceptance criteria."
 }
 JSON
+node "$VK_CLI" task start --task-id <uuid> --json
+node "$VK_CLI" task create-and-start --from-json <path|-> --json
 ```
 
-Vibe Kanban must already be running. Reinstalling preserves locally modified
-managed files unless `npx vibe-kanban skill install --force` is used.
+Start commands automatically use the configured default executor profile and
+project repository branches. Vibe Kanban must already be running. Reinstalling
+preserves locally modified managed files unless
+`npx vibe-kanban skill install --force` is used.
 
 ## What is Vibe Kanban?
 
