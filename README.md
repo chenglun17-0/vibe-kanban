@@ -79,7 +79,13 @@ pnpm i
 pnpm run dev
 ```
 
-This will start the backend. A blank DB will be copied from the `dev_assets_seed` folder.
+This starts the frontend and backend in the background. Logs and PID files are stored under `tmp/vibe-kanban-dev/`. Stop all managed development processes with:
+
+```bash
+pnpm run dev:stop
+```
+
+A blank DB will be copied from the `dev_assets_seed` folder.
 
 ### Building the frontend
 
