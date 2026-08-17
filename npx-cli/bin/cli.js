@@ -1,11 +1,18 @@
 #!/usr/bin/env node
 
 const { execSync, spawn } = require("child_process");
+const AdmZip = require("adm-zip");
 const path = require("path");
 const fs = require("fs");
-const { ensureBinary, BINARY_TAG, CACHE_DIR, LOCAL_DEV_MODE, LOCAL_DIST_DIR, R2_BASE_URL, getLatestVersion } = require("./download");
-const { SkillInstallError, installSkill } = require("./skill-installer");
-const { run: runVibeKanbanCli } = require("../skills/vibe-kanban-cli/scripts/vibe-kanban-cli");
+const {
+  ensureBinary,
+  BINARY_TAG,
+  CACHE_DIR,
+  LOCAL_DEV_MODE,
+  LOCAL_DIST_DIR,
+  R2_BASE_URL,
+  getLatestVersion,
+} = require("./download");
 
 const CLI_VERSION = require("../package.json").version;
 
@@ -81,7 +88,9 @@ function showProgress(downloaded, total) {
   const percent = total ? Math.round((downloaded / total) * 100) : 0;
   const mb = (downloaded / (1024 * 1024)).toFixed(1);
   const totalMb = total ? (total / (1024 * 1024)).toFixed(1) : "?";
-  process.stderr.write(`\r   Downloading: ${mb}MB / ${totalMb}MB (${percent}%)`);
+  process.stderr.write(
+    `\r   Downloading: ${mb}MB / ${totalMb}MB (${percent}%)`,
+  );
 }
 
 async function extractAndRun(baseName, launch) {
@@ -115,7 +124,6 @@ async function extractAndRun(baseName, launch) {
   // Extract
   if (!fs.existsSync(binPath)) {
     try {
-      const AdmZip = require("adm-zip");
       const zip = new AdmZip(zipPath);
       zip.extractAllTo(versionCacheDir, true);
     } catch (err) {
@@ -129,7 +137,9 @@ async function extractAndRun(baseName, launch) {
 
   if (!fs.existsSync(binPath)) {
     console.error(`Extracted binary not found at: ${binPath}`);
-    console.error("This usually indicates a corrupt download. Please try again.");
+    console.error(
+      "This usually indicates a corrupt download. Please try again.",
+    );
     process.exit(1);
   }
 
@@ -144,59 +154,11 @@ async function extractAndRun(baseName, launch) {
 }
 
 async function main() {
+  fs.mkdirSync(versionCacheDir, { recursive: true });
+
   const args = process.argv.slice(2);
   const isMcpMode = args.includes("--mcp");
   const isReviewMode = args[0] === "review";
-  const isSkillMode = args[0] === "skill";
-  const isTaskCliMode = ["context", "project", "task"].includes(args[0]);
-
-  if (isSkillMode) {
-    const [action, ...flags] = args.slice(1);
-    const unknownFlags = flags.filter(
-      (flag) => flag !== "--force" && flag !== "--json",
-    );
-    if (action !== "install" || unknownFlags.length > 0) {
-      console.error(
-        JSON.stringify({
-          ok: false,
-          error: {
-            code: "INVALID_ARGUMENT",
-            message: "Usage: vibe-kanban skill install [--force] [--json]",
-          },
-        }),
-      );
-      process.exitCode = 1;
-      return;
-    }
-
-    try {
-      const result = installSkill({
-        version: CLI_VERSION,
-        force: flags.includes("--force"),
-      });
-      console.log(JSON.stringify(result));
-    } catch (error) {
-      const code =
-        error instanceof SkillInstallError
-          ? error.code
-          : "SKILL_INSTALL_FAILED";
-      console.error(
-        JSON.stringify({
-          ok: false,
-          error: { code, message: error.message },
-        }),
-      );
-      process.exitCode = 1;
-    }
-    return;
-  }
-
-  if (isTaskCliMode) {
-    process.exitCode = await runVibeKanbanCli(args);
-    return;
-  }
-
-  fs.mkdirSync(versionCacheDir, { recursive: true });
 
   // Non-blocking update check (skip in MCP mode, local dev mode, and when R2 URL not configured)
   const hasValidR2Url = !R2_BASE_URL.startsWith("__");

@@ -12,39 +12,6 @@ npx vibe-kanban
 
 This will launch the application locally and open it in your browser automatically.
 
-## Agent task CLI skill
-
-Install the bundled `vibe-kanban-cli` skill for local coding agents:
-
-```bash
-npx vibe-kanban skill install
-```
-
-The skill is installed at `~/.agents/skills/vibe-kanban-cli`. It uses a bundled,
-JSON-oriented CLI to discover the current Vibe Kanban workspace, inspect projects
-and tasks, and create or start tasks without MCP:
-
-```bash
-VK_CLI="$HOME/.agents/skills/vibe-kanban-cli/scripts/vibe-kanban-cli.js"
-node "$VK_CLI" context --json
-node "$VK_CLI" project list --json
-node "$VK_CLI" task list --project-id <uuid> --json
-node "$VK_CLI" task create --from-json - --json <<'JSON'
-{
-  "project_id": "<uuid>",
-  "title": "Add user authentication",
-  "description": "Implement login and document acceptance criteria."
-}
-JSON
-node "$VK_CLI" task start --task-id <uuid> --json
-node "$VK_CLI" task create-and-start --from-json <path|-> --json
-```
-
-Start commands automatically use the configured default executor profile and
-project repository branches. Vibe Kanban must already be running. Reinstalling
-preserves locally modified managed files unless
-`npx vibe-kanban skill install --force` is used.
-
 ## What is Vibe Kanban?
 
 Vibe Kanban is a modern project management tool designed specifically for developers. It helps you organize your coding projects with kanban-style task management while providing powerful integrations with git repositories and AI coding agents.

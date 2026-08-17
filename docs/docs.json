@@ -106,7 +106,6 @@
           "integrations/github-integration",
           "integrations/azure-repos-integration",
           "integrations/vscode-extension",
-          "integrations/vibe-kanban-cli-skill",
           "integrations/mcp-server-configuration",
           "integrations/vibe-kanban-mcp-server"
         ]
