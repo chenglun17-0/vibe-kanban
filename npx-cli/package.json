@@ -13,12 +13,19 @@
     "url": "https://github.com/BloopAI/vibe-kanban"
   },
   "license": "",
-  "description": "NPX wrapper around vibe-kanban and vibe-kanban-mcp",
+  "description": "NPX wrapper and task CLI for Vibe Kanban",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
   "dependencies": {
     "adm-zip": "^0.5.16"
   },
   "files": [
     "bin",
-    "dist"
+    "dist",
+    "skills"
   ]
 }

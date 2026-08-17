@@ -1,0 +1,69 @@
+---
+title: "Vibe Kanban CLI Skill"
+description: "Install a local Agent Skill for inspecting projects and creating Vibe Kanban tasks without MCP."
+---
+
+Vibe Kanban ships a `vibe-kanban-cli` skill that coding agents can use to inspect
+the current workspace and create tasks through the local HTTP API. It does not
+use MCP or access the Vibe Kanban database directly.
+
+## Install the skill
+
+```bash
+npx vibe-kanban skill install
+```
+
+The command installs the skill at:
+
+```text
+~/.agents/skills/vibe-kanban-cli
+```
+
+Reinstalling leaves locally modified managed files untouched. To replace those
+files with the packaged version, explicitly use:
+
+```bash
+npx vibe-kanban skill install --force
+```
+
+## Available operations
+
+The bundled CLI supports:
+
+- resolving the Vibe Kanban context for the current working directory;
+- listing projects;
+- listing and reading tasks; and
+- creating tasks from JSON input.
+
+It intentionally does not update or delete tasks, modify repository scripts, or
+start task execution.
+
+## Run the CLI directly
+
+Vibe Kanban must already be running. The skill normally invokes the script on
+behalf of the agent, but it can also be run directly:
+
+```bash
+VK_CLI="$HOME/.agents/skills/vibe-kanban-cli/scripts/vibe-kanban-cli.js"
+
+node "$VK_CLI" context --json
+node "$VK_CLI" project list --json
+node "$VK_CLI" task list --project-id <uuid> --json
+node "$VK_CLI" task get --task-id <uuid> --json
+```
+
+Create a task by passing JSON through standard input:
+
+```bash
+node "$VK_CLI" task create --from-json - --json <<'JSON'
+{
+  "project_id": "<uuid>",
+  "title": "Add user authentication",
+  "description": "Implement login and document the acceptance criteria."
+}
+JSON
+```
+
+Every operation writes JSON to stdout on success. Errors are written as JSON to
+stderr and return a nonzero exit code, allowing agents to distinguish success,
+validation failures, and unavailable local services.
