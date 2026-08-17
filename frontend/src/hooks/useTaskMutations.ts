@@ -12,7 +12,6 @@ import type {
   UpdateTask,
 } from 'shared/types';
 import { taskKeys } from './useTask';
-import { runnablePlansKeys } from './useRunnablePlans';
 import { useLocation } from 'react-router-dom';
 
 export function useTaskMutations(projectId?: string) {
@@ -23,8 +22,6 @@ export function useTaskMutations(projectId?: string) {
 
   const invalidateQueries = (taskId?: string) => {
     queryClient.invalidateQueries({ queryKey: taskKeys.all });
-    // Task create/update can link or release an exec-plan (plan_path)
-    queryClient.invalidateQueries({ queryKey: runnablePlansKeys.all });
     if (taskId) {
       queryClient.invalidateQueries({ queryKey: taskKeys.byId(taskId) });
     }

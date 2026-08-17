@@ -479,19 +479,6 @@
     "title_one": "Todos ({{count}})",
     "title_other": "Todos ({{count}})"
   },
-  "runnablePlans": {
-    "sectionTitle_one": "Planes ejecutables ({{count}})",
-    "sectionTitle_other": "Planes ejecutables ({{count}})",
-    "viewPlan": "Ver plan",
-    "start": "Iniciar",
-    "startExecution": "Iniciar ejecución",
-    "startDialog": {
-      "title": "Iniciar ejecución del plan",
-      "description": "Crea una tarea vinculada a este plan e inicia la ejecución de inmediato. El documento del plan es la especificación de implementación.",
-      "starting": "Iniciando…",
-      "start": "Iniciar"
-    }
-  },
   "todoPopup": {
     "title": "Tareas",
     "progress": "{{completed}}/{{total}} completadas",

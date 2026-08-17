@@ -74,16 +74,6 @@ export {
   type StartReviewDialogProps,
 } from './tasks/StartReviewDialog';
 
-// Plan-driven task creation (tech-solution exec-plans)
-export {
-  ViewPlanDialog,
-  type ViewPlanDialogProps,
-} from './plans/ViewPlanDialog';
-export {
-  StartPlanDialog,
-  type StartPlanDialogProps,
-} from './plans/StartPlanDialog';
-
 // Auth dialogs
 export { GhCliSetupDialog } from './auth/GhCliSetupDialog';
 

@@ -69,7 +69,6 @@ export function NoServerContent({
         description: COMPANION_INSTALL_TASK_DESCRIPTION,
         status: null,
         parent_workspace_id: null,
-        plan_path: null,
         image_ids: null,
       },
       executor_profile_id: config.executor_profile,

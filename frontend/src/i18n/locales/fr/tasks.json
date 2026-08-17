@@ -248,19 +248,6 @@
     "title_one": "À faire ({{count}})",
     "title_other": "À faire ({{count}})"
   },
-  "runnablePlans": {
-    "sectionTitle_one": "Plans exécutables ({{count}})",
-    "sectionTitle_other": "Plans exécutables ({{count}})",
-    "viewPlan": "Voir le plan",
-    "start": "Démarrer",
-    "startExecution": "Démarrer l'exécution",
-    "startDialog": {
-      "title": "Démarrer l'exécution du plan",
-      "description": "Crée une tâche liée à ce plan et démarre l'exécution immédiatement. Le document de plan sert de spécification d'implémentation.",
-      "starting": "Démarrage…",
-      "start": "Démarrer"
-    }
-  },
   "todoPopup": {
     "title": "Tâches",
     "progress": "{{completed}}/{{total}} terminées",

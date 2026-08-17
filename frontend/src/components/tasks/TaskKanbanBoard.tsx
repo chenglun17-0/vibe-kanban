@@ -7,7 +7,6 @@ import {
   KanbanProvider,
 } from '@/components/ui/shadcn-io/kanban';
 import { TaskCard } from './TaskCard';
-import RunnablePlansSection from './RunnablePlansSection';
 import type { TaskStatus, TaskWithAttemptStatus } from 'shared/types';
 import { statusBoardColors, statusLabels } from '@/utils/statusLabels';
 
@@ -43,9 +42,6 @@ function TaskKanbanBoard({
               color={statusBoardColors[statusKey]}
               onAddTask={onCreateTask}
             />
-            {statusKey === 'todo' && (
-              <RunnablePlansSection projectId={projectId} />
-            )}
             <KanbanCards>
               {tasks.map((task, index) => (
                 <TaskCard
