@@ -101,7 +101,7 @@ export function TaskFollowUpSection({
   );
   const { branch: attemptBranch, refetch: refetchAttemptBranch } =
     useAttemptBranch(workspaceId);
-  const { profiles } = useUserSystem();
+  const { profiles, config } = useUserSystem();
   const { comments, generateReviewMarkdown, clearComments } = useReview();
   const {
     generateMarkdown: generateClickedMarkdown,
@@ -469,7 +469,7 @@ export function TaskFollowUpSection({
     (e?: KeyboardEvent) => {
       e?.preventDefault();
       if (isAttemptRunning) {
-        // When running, CMD+Enter queues the message (if not already queued)
+        // While running, the configured send shortcut queues the message.
         if (!isQueued) {
           handleQueueMessage();
         }
@@ -780,6 +780,7 @@ export function TaskFollowUpSection({
                 executor={latestProfileId?.executor ?? null}
                 taskAttemptId={workspaceId}
                 onCmdEnter={handleSubmitShortcut}
+                sendShortcut={config?.send_message_shortcut}
                 className="min-h-[40px]"
               />
             </div>

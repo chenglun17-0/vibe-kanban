@@ -31,7 +31,7 @@ export function RetryEditorInline({
   const attemptId = attempt.id;
   const { isAttemptRunning, attemptData } = useAttemptExecution(attemptId);
   const { data: branchStatus } = useBranchStatus(attemptId);
-  const { profiles } = useUserSystem();
+  const { profiles, config } = useUserSystem();
   const { projectId } = useProject();
 
   const [message, setMessage] = useState(initialContent);
@@ -141,6 +141,7 @@ export function RetryEditorInline({
           onChange={setMessage}
           disabled={isSending}
           onCmdEnter={handleCmdEnter}
+          sendShortcut={config?.send_message_shortcut}
           onPasteFiles={handlePasteFiles}
           className={cn('min-h-[40px]', 'bg-background')}
           projectId={projectId}

@@ -3,9 +3,12 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import {
   PASTE_COMMAND,
   COMMAND_PRIORITY_LOW,
+  $getRoot,
   $getSelection,
+  $isParagraphNode,
   $isRangeSelection,
   $createParagraphNode,
+  $setSelection,
 } from 'lexical';
 import {
   $convertFromMarkdownString,
@@ -20,8 +23,7 @@ type Props = {
  * Plugin that handles paste with markdown conversion.
  *
  * Behavior:
- * - CMD+V with HTML: Let default Lexical handling work
- * - CMD+V with plain text: Convert markdown to formatted nodes, insert at cursor
+ * - CMD+V: Convert the clipboard's plain-text representation to editor nodes
  * - CMD+SHIFT+V: Insert plain text as-is (raw paste)
  */
 export function PasteMarkdownPlugin({ transformers }: Props) {
@@ -54,9 +56,8 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
         const clipboardData = event.clipboardData;
         if (!clipboardData) return false;
 
-        // If HTML exists, let default Lexical handling work
-        if (clipboardData.getData('text/html')) return false;
-
+        // Browser selections usually include both HTML and plain text. Always
+        // handle the plain-text form so rich clipboard data cannot be dropped.
         const plainText = clipboardData.getData('text/plain');
         if (!plainText) return false;
 
@@ -72,23 +73,40 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
             return;
           }
 
-          // CMD+V: Convert markdown and insert at cursor
+          // Markdown conversion changes the active selection and creates nodes
+          // under its target, so use an attached temporary container and then
+          // restore the user's original caret before inserting the result.
+          const originalSelection = selection.clone();
+          const tempContainer = $createParagraphNode();
+          $getRoot().append(tempContainer);
+
           try {
-            const tempContainer = $createParagraphNode();
             $convertFromMarkdownString(plainText, transformers, tempContainer);
 
-            const nodes = tempContainer.getChildren();
+            const convertedNodes = tempContainer.getChildren();
+            const nodes =
+              convertedNodes.length === 1 && $isParagraphNode(convertedNodes[0])
+                ? convertedNodes[0].getChildren()
+                : convertedNodes;
+
+            nodes.forEach((node) => node.remove());
+            tempContainer.remove();
+            $setSelection(originalSelection);
+
+            const restoredSelection = $getSelection();
+            if (!$isRangeSelection(restoredSelection)) return;
             if (nodes.length === 0) {
-              selection.insertRawText(plainText);
+              restoredSelection.insertRawText(plainText);
               return;
             }
-
-            // Use selection.insertNodes() instead of $insertNodes()
-            // This properly handles node parent references
-            selection.insertNodes(nodes);
+            restoredSelection.insertNodes(nodes);
           } catch {
-            // Fallback to raw text on error
-            selection.insertRawText(plainText);
+            tempContainer.remove();
+            $setSelection(originalSelection);
+            const restoredSelection = $getSelection();
+            if ($isRangeSelection(restoredSelection)) {
+              restoredSelection.insertRawText(plainText);
+            }
           }
         });
 
